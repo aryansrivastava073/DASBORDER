@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="DAS border sensing">
+  <rect width="32" height="32" fill="#EDEAE3"/>
+  <!-- boundary line -->
+  <g stroke="#B3312A" stroke-width="1.6" stroke-linecap="round">
+    <path d="M3 7h3M9 7h3M15 7h3M21 7h3M27 7h2"/>
+  </g>
+  <!-- fibre cable -->
+  <path d="M2 19h28" stroke="#0F6F5C" stroke-width="2.4" stroke-linecap="round"/>
+  <!-- channels, brighter toward the event -->
+  <g fill="#0F6F5C">
+    <circle cx="5" cy="19" r="1.5"/>
+    <circle cx="27" cy="19" r="1.5"/>
+  </g>
+  <circle cx="11" cy="19" r="2" fill="#C8871F"/>
+  <circle cx="21" cy="19" r="2" fill="#C8871F"/>
+  <circle cx="16" cy="19" r="2.9" fill="#B3312A"/>
+  <!-- wavefront -->
+  <path d="M16 19a7.5 7.5 0 0 1 0 8" fill="none" stroke="#B3312A" stroke-width="1.2" opacity="0.55"/>
+  <path d="M16 19a11.5 11.5 0 0 1 0 12" fill="none" stroke="#B3312A" stroke-width="1" opacity="0.3"/>
+</svg>

@@ -1,0 +1,1897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DAS Border Sensing Simulator | IIT Kharagpur</title>
+<meta name="description" content="Interactive simulator for distributed acoustic sensing on a fenced border: fibre channel response, live spectrum and a baseline frequency classifier. Simulated data.">
+<meta name="author" content="Mohit, IIT Kharagpur">
+<meta name="color-scheme" content="light">
+<meta property="og:type" content="website">
+<meta property="og:title" content="DAS Border Sensing Simulator">
+<meta property="og:description" content="Fibre-optic acoustic sensing on a fenced border, in 3D. Channel response, live spectrum, sonification and a baseline classifier. Simulated data, not operational output.">
+<meta property="og:image" content="preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --paper:#EDEAE3; --paper-2:#F6F4EF; --panel:#FBFAF7;
+    --ink:#000000; --graphite:#4A4E52; --mute:#7C8085;
+    --rule:#CFC9BC; --rule-soft:#E2DDD2;
+    --neg:#1F5FA8; --pos:#B3312A; --fibre:#0F6F5C; --hot:#C8871F;
+    --good:#2E6B4F;
+    --sans: ui-sans-serif, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  [hidden]{display:none !important;}
+  html,body{height:100%;}
+  body{margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--sans); font-size:13px; line-height:1.45; overflow:hidden;
+    -webkit-font-smoothing:antialiased;}
+  button{font-family:inherit; font-size:inherit; color:inherit; cursor:pointer;}
+  button:focus-visible, input:focus-visible{outline:2px solid var(--fibre); outline-offset:2px;}
+  #app{display:flex; flex-direction:column; height:100vh;}
+
+  header{display:flex; align-items:baseline; gap:12px;
+    padding:11px 16px 10px; border-bottom:1px solid var(--rule); background:var(--paper-2);}
+  header h1{margin:0; font-size:15px; font-weight:600; letter-spacing:-0.01em;}
+  header p{margin:0; color:var(--mute); font-size:12px;}
+  header .spacer{flex:1;}
+  .btn{background:transparent; border:1px solid var(--ink); border-radius:2px;
+    padding:5px 10px; font-size:12px; font-weight:500; white-space:nowrap;}
+  .btn:hover{background:var(--ink); color:var(--paper-2);}
+  .btn.solid{background:var(--ink); color:var(--paper-2);}
+  .btn.solid:hover{background:var(--graphite); border-color:var(--graphite);}
+  .btn.quiet{border-color:var(--rule); color:var(--graphite);}
+  .btn.quiet:hover{background:var(--graphite); border-color:var(--graphite); color:var(--paper-2);}
+  .btn[aria-pressed="true"]{background:var(--ink); color:var(--paper-2);}
+
+  #main{display:flex; flex:1; min-height:0;}
+  .panel{background:var(--panel); flex-shrink:0; overflow-y:auto; overflow-x:hidden;}
+  #left{width:252px; border-right:1px solid var(--rule);}
+  #right{width:292px; border-left:1px solid var(--rule);}
+  .sect{padding:14px 16px 16px; border-bottom:1px solid var(--rule-soft);}
+  .sect:last-child{border-bottom:none;}
+  .sect h2{margin:0 0 11px; font-size:12px; font-weight:600; color:var(--graphite);}
+
+  .choice{display:grid; grid-template-columns:1fr 1fr; gap:5px;}
+  .choice.one{grid-template-columns:1fr;}
+  .chip{border:1px solid var(--rule); border-radius:2px; background:#fff;
+    padding:7px 8px; text-align:left; font-size:12px; line-height:1.25;}
+  .chip b{display:block; font-weight:600;}
+  .chip span{display:block; font-family:var(--mono); font-size:10px; color:var(--mute); margin-top:2px;}
+  .chip:hover{border-color:var(--graphite);}
+  .chip[aria-pressed="true"]{background:var(--ink); color:var(--paper-2); border-color:var(--ink);}
+  .chip[aria-pressed="true"] span{color:#B9B4A8;}
+  .chip:disabled{opacity:0.45; cursor:default;}
+
+  .ctl{margin-bottom:13px;} .ctl:last-child{margin-bottom:0;}
+  .ctl .row{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;}
+  .ctl output{font-family:var(--mono); font-size:12px; color:var(--graphite);}
+  input[type=range]{-webkit-appearance:none; appearance:none; width:100%; height:16px;
+    background:transparent; margin:0; display:block;}
+  input[type=range]::-webkit-slider-runnable-track{height:1px; background:var(--rule);}
+  input[type=range]::-moz-range-track{height:1px; background:var(--rule);}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; appearance:none;
+    width:11px; height:11px; margin-top:-5px; border-radius:50%; background:var(--ink); border:none;}
+  input[type=range]::-moz-range-thumb{width:11px; height:11px; border-radius:50%;
+    background:var(--ink); border:none;}
+  .hint{font-size:11px; color:var(--mute); margin:5px 0 0; line-height:1.4;}
+
+  #view{position:relative; flex:1; min-width:0; background:var(--paper);}
+  #view canvas{display:block;}
+  #camBtns{position:absolute; left:11px; top:11px; display:flex; gap:4px;}
+  #camBtns .btn{background:rgba(246,244,239,0.9); font-size:11px; padding:4px 8px;}
+  #nav{position:absolute; left:0; right:0; bottom:8px; text-align:center;
+    font-size:11px; color:var(--mute); pointer-events:none;}
+  #nav b{color:var(--graphite); font-weight:600;}
+  #legend{position:absolute; left:11px; bottom:8px; font-size:11px; color:var(--graphite);
+    display:flex; flex-direction:column; gap:3px;}
+  #legend div{display:flex; align-items:center; gap:6px;}
+  #legend i{width:14px; height:2px; display:block;}
+
+  .verdict{border:1px solid var(--ink); border-radius:2px; padding:10px 11px; background:#fff;}
+  .verdict .cls{font-size:19px; font-weight:600; letter-spacing:-0.01em; line-height:1.15;}
+  .verdict .conf{font-family:var(--mono); font-size:12px; color:var(--graphite); margin-top:3px;}
+  .verdict.idle{border-color:var(--rule);}
+  .verdict.idle .cls{color:var(--mute); font-weight:500;}
+  .verdict.warn{border-color:var(--hot);}
+  .kv{display:flex; justify-content:space-between; gap:8px; padding:4px 0;
+    border-bottom:1px solid var(--rule-soft); font-size:12px;}
+  .kv:last-child{border-bottom:none;}
+  .kv span:last-child{font-family:var(--mono); color:var(--graphite);}
+  #cChans{display:block; width:100%; height:96px; background:#fff; border:1px solid var(--rule-soft);}
+  #log{font-family:var(--mono); font-size:10.5px; color:var(--graphite);}
+  #log div{padding:3px 0; border-bottom:1px solid var(--rule-soft);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  #log div:last-child{border-bottom:none;}
+  #log .empty{color:var(--mute); font-family:var(--sans); font-size:11.5px; white-space:normal;}
+
+  #gameSect{background:#fff;}
+  #gameFb{font-size:11.5px; line-height:1.45; margin:9px 0 0; min-height:2.6em; color:var(--graphite);}
+  #gameFb.ok{color:var(--good); font-weight:500;}
+  #gameFb.no{color:var(--pos); font-weight:500;}
+
+  #strip{height:156px; flex-shrink:0; display:flex;
+    border-top:1px solid var(--rule); background:var(--paper-2);}
+  .plot{position:relative; padding:9px 14px 8px;}
+  .plot h3{margin:0 0 5px; font-size:11.5px; font-weight:600; color:var(--graphite);
+    display:flex; justify-content:space-between; align-items:baseline; gap:10px;}
+  .plot h3 em{font-style:normal; font-family:var(--mono); font-size:10.5px; color:var(--mute);}
+  .plot canvas{display:block; width:100%; height:104px;}
+  #tracePlot{flex:1.55; min-width:0; border-right:1px solid var(--rule);}
+  #specPlot{flex:1; min-width:0;}
+
+  @media (max-width:1120px){ #right{width:262px;} #left{width:228px;} }
+  @media (max-width:880px){
+    body{overflow:auto;} #app{height:auto;} #main{flex-direction:column;}
+    #left,#right{width:100%; border:none; border-bottom:1px solid var(--rule);}
+    #view{height:56vh;} #strip{flex-direction:column; height:auto;}
+    #tracePlot{border-right:none; border-bottom:1px solid var(--rule);}
+  }
+  @media (prefers-reduced-motion:reduce){ *{transition:none !important;} }
+
+  /* ---------- title block ---------- */
+  #title{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  #title h1{margin:0; font-size:15px; font-weight:600; letter-spacing:-0.01em;}
+  #title .org{font-size:12px; color:var(--mute);}
+  #title .ver{font-family:var(--mono); font-size:10.5px; color:var(--mute);}
+  .stamp{display:inline-block; border:1px solid var(--pos); color:var(--pos);
+    border-radius:2px; padding:1px 6px; font-size:10px; font-weight:600;
+    letter-spacing:0.03em; white-space:nowrap;}
+
+  /* ---------- boot overlay ---------- */
+  #boot{position:fixed; inset:0; z-index:60; background:var(--paper);
+    display:flex; align-items:center; justify-content:center; padding:28px;}
+  #boot .card{max-width:520px;}
+  #boot h2{margin:0 0 8px; font-size:19px; font-weight:600;}
+  #boot p{margin:0 0 10px; font-size:13px; line-height:1.55; color:var(--graphite);}
+  #boot code{font-family:var(--mono); font-size:12px; background:var(--paper-2);
+    border:1px solid var(--rule-soft); padding:1px 4px;}
+  #bootBar{height:2px; background:var(--rule-soft); margin-top:14px; overflow:hidden;}
+  #bootBar i{display:block; height:100%; width:35%; background:var(--ink);
+    animation:slide 1.15s ease-in-out infinite;}
+  @keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(340%)}}
+  @media (prefers-reduced-motion:reduce){ #bootBar i{animation:none; width:100%;} }
+
+  /* ---------- help ---------- */
+  #help{position:fixed; inset:0; z-index:55; background:rgba(22,24,26,0.42);
+    display:flex; align-items:center; justify-content:center; padding:24px;}
+  #help .sheet{background:var(--panel); border:1px solid var(--ink); border-radius:3px;
+    max-width:660px; max-height:86vh; overflow-y:auto; padding:22px 24px 20px;}
+  #help h2{margin:0 0 4px; font-size:18px; font-weight:600;}
+  #help h3{margin:16px 0 5px; font-size:12.5px; font-weight:600; color:var(--graphite);}
+  #help p, #help li{font-size:12.5px; line-height:1.55; color:var(--ink); margin:0 0 7px;}
+  #help ol, #help ul{margin:0 0 7px; padding-left:20px;}
+  #help .foot{display:flex; justify-content:space-between; align-items:center;
+    gap:12px; margin-top:16px; padding-top:13px; border-top:1px solid var(--rule-soft);}
+  #help .foot small{color:var(--mute); font-size:11px;}
+
+  .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+    overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;}
+
+  #toast{position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
+    background:var(--ink); color:var(--paper-2); padding:7px 14px; border-radius:2px;
+    font-size:12px; z-index:70; pointer-events:none;}
+
+  /* ---------- print: a clean figure for a report ---------- */
+  @media print{
+    @page{ margin:14mm; }
+    body{overflow:visible; background:#fff;}
+    #app{height:auto;}
+    header{border-bottom:1px solid #000; background:#fff;}
+    #boot, #help, #toast, #camBtns, #nav, .spacer,
+    header .btn, #srcSect, #gameSect, #log, #btnNext{display:none !important;}
+    #main{flex-direction:row; page-break-inside:avoid;}
+    #left{width:0; display:none;}
+    #right{width:74mm; border:none;}
+    #view{height:104mm;}
+    #strip{height:auto; page-break-inside:avoid;}
+    .panel{overflow:visible;}
+    .sect{border-bottom:none; padding:0 0 8px;}
+    #printNote{display:block !important;}
+  }
+  #printNote{display:none; font-size:10px; color:var(--mute); padding:6px 16px;}
+</style>
+</head>
+<body>
+
+<!-- boot overlay: covers load, and stays up with a message if we cannot run -->
+<div id="boot">
+  <div class="card">
+    <h2 id="bootTitle">DAS Border Sensing Simulator</h2>
+    <p id="bootMsg">Building terrain and receiver array&hellip;</p>
+    <div id="bootBar"><i></i></div>
+  </div>
+</div>
+
+<!-- first-run help -->
+<div id="help" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <h2 id="helpTitle">What this is</h2>
+    <p>A fibre-optic cable is buried along a fenced border. Ground vibration stretches
+      the glass, which the interrogator at the end of the cable detects and locates.
+      This simulator shows what that sensing layer sees, and what can be worked out
+      from it.</p>
+    <p><span class="stamp">SIMULATED DATA</span> Every signal here is synthesised from
+      a physical model. Nothing was recorded in the field, and the accuracy figures
+      quoted elsewhere in this project come from a separate training pipeline, not
+      from this page.</p>
+
+    <h3>Try this first</h3>
+    <ol>
+      <li>Press <b>Start</b>. A heavy vehicle crosses the line.</li>
+      <li>Press <b>Sound on</b>. The band is pitched up eight times so you can hear it.</li>
+      <li>Switch the source to <b>Animal</b> and listen to the difference.</li>
+      <li>Drag <b>Ambient noise</b> upward until the verdict gives up.</li>
+      <li>Change <b>Receivers</b> from 8 to 96 and watch the position error fall.</li>
+    </ol>
+
+    <h3>Then try guess mode</h3>
+    <p>The class is hidden and you call it from the trace, the spectrum and the sound.
+      A perfect player scores about 89 percent, because roughly a fifth of rounds land
+      in the 10 to 15 Hz band where animal and person genuinely overlap. Those are the
+      cases a trained model is needed for.</p>
+
+    <h3>Reading the panels</h3>
+    <ul>
+      <li><b>Channel response</b> is the amplitude at each receiver. Its shape fixes the
+        position along the line.</li>
+      <li><b>Trace</b> is the waveform at the strongest channel, drawn as a seismic
+        wiggle with filled polarity.</li>
+      <li><b>Spectrum</b> is a real 512-point FFT of that trace. The verdict is the
+        spectral peak matched to the nearest band, which is a baseline method.</li>
+    </ul>
+
+    <h3>Getting around</h3>
+    <p>Drag to rotate, right-drag to pan, scroll to zoom. Arrow keys also rotate,
+      <code>+</code> and <code>-</code> zoom, <code>H</code> reopens this panel.</p>
+
+    <div class="foot">
+      <small>Mohit &middot; IIT Kharagpur</small>
+      <button class="btn solid" id="helpClose">Start exploring</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" hidden></div>
+<div class="sr-only" id="live" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<div id="app">
+
+  <header>
+    <div id="title">
+      <h1>DAS Border Sensing Simulator</h1>
+      <span class="org">IIT Kharagpur</span>
+      <span class="ver" id="verLabel"></span>
+      <span class="stamp">SIMULATED DATA</span>
+      <span class="org">buried fibre, <span id="hdrCh">24</span> channels over 400&nbsp;m</span>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn quiet" id="btnHelp" title="Help (H)">Help</button>
+    <button class="btn quiet" id="btnShare" title="Copy a link to this exact scenario">Copy link</button>
+    <button class="btn quiet" id="btnPng" title="Download the view as a captioned PNG">PNG</button>
+    <button class="btn quiet" id="btnCsvTrace" title="Download the current trace window">Trace CSV</button>
+    <button class="btn quiet" id="btnCsvLog" title="Download the detection log">Log CSV</button>
+    <button class="btn quiet" id="btnSound" aria-pressed="false">Sound off</button>
+    <button class="btn quiet" id="btnGame" aria-pressed="false">Guess mode</button>
+    <button class="btn quiet" id="btnTerrain">New terrain</button>
+    <button class="btn solid" id="btnPlay">Start</button>
+  </header>
+  <div id="printNote"></div>
+
+  <div id="main">
+
+    <!-- ============ LEFT ============ -->
+    <div class="panel" id="left">
+      <div class="sect" id="srcSect">
+        <h2>What is moving</h2>
+        <div class="choice" id="srcChoice"></div>
+        <p class="hint" id="srcLock" hidden>Hidden while you are guessing.</p>
+      </div>
+
+      <div class="sect">
+        <h2>How it moves</h2>
+        <div class="choice one" id="trackChoice"></div>
+        <div class="ctl" style="margin-top:11px">
+          <div class="row"><label for="sSpeed">Speed</label><output id="oSpeed"></output></div>
+          <input type="range" id="sSpeed" min="1" max="20" step="0.5" value="6">
+        </div>
+        <div class="ctl">
+          <div class="row"><label for="sStand">Track offset</label><output id="oStand"></output></div>
+          <input type="range" id="sStand" min="10" max="180" step="5" value="45">
+        </div>
+      </div>
+
+      <div class="sect">
+        <h2>Receiver array</h2>
+        <div class="ctl">
+          <div class="row"><label for="sCh">Receivers</label><output id="oCh"></output></div>
+          <input type="range" id="sCh" min="0" max="7" step="1" value="3">
+          <p class="hint" id="chHint"></p>
+        </div>
+      </div>
+
+      <div class="sect">
+        <h2>Ground and cable</h2>
+        <div class="ctl">
+          <div class="row"><label for="sCoup">Soil coupling</label><output id="oCoup"></output></div>
+          <input type="range" id="sCoup" min="15" max="120" step="5" value="70">
+          <p class="hint">Attenuation length. Rock carries vibration far; dry sand and snow damp it quickly.</p>
+        </div>
+        <div class="ctl">
+          <div class="row"><label for="sNoise">Ambient noise</label><output id="oNoise"></output></div>
+          <input type="range" id="sNoise" min="0" max="0.5" step="0.01" value="0.03">
+          <p class="hint">Roads, rail, farm machinery and livestock share the same frequency band.</p>
+        </div>
+        <div class="ctl">
+          <div class="row"><label for="sRug">Terrain relief</label><output id="oRug"></output></div>
+          <input type="range" id="sRug" min="0" max="1" step="0.05" value="0.5">
+        </div>
+      </div>
+
+      <div class="sect">
+        <h2>How the reading is made</h2>
+        <p class="hint" style="margin:0">
+          The trace is synthesised from the source frequency, its harmonics, distance
+          attenuation and noise, sampled at 500&nbsp;Hz. The spectrum is a real 512-point
+          FFT of that trace, and the verdict comes from its peak matched to the nearest
+          band. A baseline method, not the trained ensemble.
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ CENTRE ============ -->
+    <div id="view">
+      <div id="camBtns">
+        <button class="btn" id="camObl">Oblique</button>
+        <button class="btn" id="camMap">Overhead</button>
+        <button class="btn" id="camLine">Along cable</button>
+      </div>
+      <div id="legend">
+        <div><i style="background:var(--fibre)"></i> buried fibre</div>
+        <div><i style="background:var(--hot)"></i> responding channel</div>
+        <div><i style="background:var(--pos)"></i> boundary pillars</div>
+      </div>
+      <div id="nav"><b>Drag</b> rotate &nbsp; <b>Right-drag</b> pan &nbsp; <b>Scroll</b> zoom</div>
+    </div>
+
+    <!-- ============ RIGHT ============ -->
+    <div class="panel" id="right">
+
+      <div class="sect" id="gameSect" hidden>
+        <h2>Call the source</h2>
+        <div class="choice" id="guessBtns"></div>
+        <p id="gameFb">Listen and read the trace, then make your call.</p>
+        <div class="kv"><span>Correct</span><span id="gScore">0 / 0</span></div>
+        <div class="kv"><span>Streak</span><span id="gStreak">0</span></div>
+        <div class="kv"><span>Best streak</span><span id="gBest">0</span></div>
+        <button class="btn" id="btnNext" style="margin-top:10px; width:100%">Next round</button>
+      </div>
+
+      <div class="sect">
+        <h2>Verdict</h2>
+        <div class="verdict idle" id="verdict">
+          <div class="cls" id="vCls">Nothing detected</div>
+          <div class="conf" id="vConf">press Start</div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="kv"><span>Spectral peak</span><span id="mPeak">&mdash;</span></div>
+          <div class="kv"><span>Standoff from cable</span><span id="mDist">&mdash;</span></div>
+          <div class="kv"><span>Heading</span><span id="mHead">&mdash;</span></div>
+          <div class="kv"><span>Position</span><span id="mSide">&mdash;</span></div>
+          <div class="kv"><span>Strongest channel</span><span id="mCh">&mdash;</span></div>
+          <div class="kv"><span>Signal to noise</span><span id="mSnr">&mdash;</span></div>
+          <div class="kv"><span>Channel spacing</span><span id="mSpace">&mdash;</span></div>
+          <div class="kv"><span>Position error</span><span id="mErr">&mdash;</span></div>
+        </div>
+      </div>
+
+      <div class="sect">
+        <h2>Channel response</h2>
+        <canvas id="cChans"></canvas>
+        <p class="hint">One event is seen by many channels at once. The shape of this
+          profile fixes its position along the line, and the dashed line is the
+          position the array estimates from it.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Detections</h2>
+        <div id="log"><div class="empty">Nothing logged yet. A detection is recorded when
+          the verdict settles on one class.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ BOTTOM ============ -->
+  <div id="strip">
+    <div class="plot" id="tracePlot">
+      <h3>Strongest channel trace <em id="traceMeta">500 Hz &middot; 1.0 s window</em></h3>
+      <canvas id="cTrace"></canvas>
+    </div>
+    <div class="plot" id="specPlot">
+      <h3>Spectrum <em id="specMeta">512-point FFT</em></h3>
+      <canvas id="cSpec"></canvas>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/three.min.js" onerror="window.__threeFailed=true"></script>
+<script>
+"use strict";
+
+/* ---------------------------------------------------------------------
+   Boot guard. Two ways this page can fail before anything is drawn:
+   the library did not load, or the browser has no usable WebGL context.
+   Both used to leave an empty grey rectangle with no explanation.
+   --------------------------------------------------------------------- */
+const BUILD = { version:'2.1', date:'2026-09-08' };
+
+function bootFail(title, html){
+  const b=document.getElementById('boot');
+  document.getElementById('bootTitle').textContent=title;
+  document.getElementById('bootMsg').innerHTML=html;
+  const bar=document.getElementById('bootBar');
+  if(bar) bar.remove();
+  b.hidden=false;
+}
+
+function webglOK(){
+  try{
+    const c=document.createElement('canvas');
+    return !!(window.WebGLRenderingContext &&
+      (c.getContext('webgl')||c.getContext('experimental-webgl')));
+  }catch(e){ return false; }
+}
+
+if(window.__threeFailed || typeof THREE==='undefined'){
+  bootFail('Could not load the 3D library',
+    'The file <code>vendor/three.min.js</code> did not load. If you opened this page '+
+    'on its own, make sure the <code>vendor</code> folder sits next to it. '+
+    'Everything else on the page depends on it, so nothing can be drawn.');
+} else if(!webglOK()){
+  bootFail('This browser cannot show the 3D view',
+    'WebGL is unavailable or switched off, so the terrain and cable cannot be drawn. '+
+    'Try a current version of Chrome, Edge, Firefox or Safari, and check that hardware '+
+    'acceleration is enabled in your browser settings.');
+} else {
+  main();
+}
+
+function main(){
+
+/* =======================================================================
+   1. MODEL CONSTANTS  +  BORDER LAYOUT
+   =======================================================================
+   The cable is the datum at z = 0. Everything else is placed relative to
+   it, in the order it appears on a real fenced border, looking from the
+   far side inward:
+
+        z = +26   boundary pillars marking the international line
+        z = +12   fence: twin post rows, wire, concertina on top
+        z =   0   buried fibre cable  <- our sensor
+        z = -16   patrol track
+        z = -27   observation posts and the interrogator shelter
+*/
+const SPAN = 400;
+const FS = 500, NFFT = 512, TRACE_LEN = 512;
+const CH_OPTIONS = [8, 12, 16, 24, 32, 48, 64, 96];
+
+const Z_PILLAR = 26, Z_FENCE = 12, Z_TRACK = -16, Z_POST = -27;
+
+/* nom = the frequency used in normal mode. It sits clearly inside one band,
+   because the animal and person bands overlap between 10 and 15 Hz and a
+   nominal value on that boundary would be permanently ambiguous.          */
+const SOURCES = [
+  { key:'vehicle', name:'Heavy vehicle', band:[30,45],  nom:37.5, amp:1.00, note:'30-45 Hz' },
+  { key:'person',  name:'Person',        band:[10,20],  nom:17.0, amp:0.55, note:'10-20 Hz' },
+  { key:'animal',  name:'Animal',        band:[5,15],   nom:8.0,  amp:0.34, note:'5-15 Hz'  },
+  { key:'aerial',  name:'Aerial',        band:[50,100], nom:75.0, amp:0.82, note:'50-100 Hz'}
+];
+const TRACKS = [
+  { key:'cross', name:'Crossing the line' },
+  { key:'along', name:'Along the line' },
+  { key:'away',  name:'Moving away' }
+];
+
+const state = {
+  src:SOURCES[0], nCh:24, track:TRACKS[0],
+  speed:6, standoff:45, coupling:70, noise:0.03, relief:0.5,
+  fOverride:null, running:false, seed:Math.random()*1000
+};
+
+/* =======================================================================
+   2. TERRAIN
+   ======================================================================= */
+function hash2(x,y,s){ const h=Math.sin(x*127.1+y*311.7+s*74.7)*43758.5453123; return h-Math.floor(h); }
+function vnoise(x,y,s){
+  const xi=Math.floor(x), yi=Math.floor(y), xf=x-xi, yf=y-yi;
+  const u=xf*xf*(3-2*xf), v=yf*yf*(3-2*yf);
+  const a=hash2(xi,yi,s), b=hash2(xi+1,yi,s), c=hash2(xi,yi+1,s), d=hash2(xi+1,yi+1,s);
+  return (a*(1-u)+b*u)*(1-v)+(c*(1-u)+d*u)*v;
+}
+function fbm(x,y,s){
+  let sum=0, amp=0.5, f=1;
+  for (let o=0;o<5;o++){ sum+=amp*vnoise(x*f,y*f,s+o*31.4); f*=2.03; amp*=0.5; }
+  return sum;
+}
+function terrainH(x,z){
+  const s=1/95;
+  let h=Math.pow(fbm(x*s,z*s,state.seed),1.25);
+  // flatten the whole installation corridor, centred between pillars and posts
+  const corridor=Math.exp(-Math.pow(z-((Z_PILLAR+Z_POST)/2),2)/(2*44*44));
+  h*=(1-0.70*corridor);
+  return h*(10+52*state.relief);
+}
+
+/* =======================================================================
+   3. SCENE
+   ======================================================================= */
+const view=document.getElementById('view');
+const PAPER=0xEDEAE3;
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setClearColor(PAPER,1);
+view.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.fog=new THREE.Fog(PAPER,360,820);
+const camera=new THREE.PerspectiveCamera(42,1,1,3000);
+
+scene.add(new THREE.HemisphereLight(0xF2EFE6,0x6C6A5C,0.88));
+const sun=new THREE.DirectionalLight(0xFFF6E2,0.72); sun.position.set(-160,240,140); scene.add(sun);
+const rim=new THREE.DirectionalLight(0xBFC9CF,0.26); rim.position.set(180,90,-170); scene.add(rim);
+
+/* ---- terrain ---- */
+const SEG=112;
+const terrGeo=new THREE.PlaneGeometry(SPAN,SPAN,SEG,SEG);
+terrGeo.rotateX(-Math.PI/2);
+terrGeo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(terrGeo.attributes.position.count*3),3));
+const terrain=new THREE.Mesh(terrGeo,new THREE.MeshStandardMaterial({
+  vertexColors:true, flatShading:true, roughness:0.94, metalness:0
+}));
+scene.add(terrain);
+
+const RAMP=[
+  {t:0.00,c:new THREE.Color(0xD9D1BC)},{t:0.28,c:new THREE.Color(0xA8AE86)},
+  {t:0.58,c:new THREE.Color(0x8A9268)},{t:0.82,c:new THREE.Color(0x7C7360)},
+  {t:1.00,c:new THREE.Color(0x8E8577)}
+];
+const _c1=new THREE.Color();
+function rampColor(t,out){
+  t=Math.max(0,Math.min(1,t));
+  for(let i=0;i<RAMP.length-1;i++){
+    if(t<=RAMP[i+1].t){
+      const f=(t-RAMP[i].t)/(RAMP[i+1].t-RAMP[i].t||1);
+      return out.copy(RAMP[i].c).lerp(RAMP[i+1].c,f);
+    }
+  }
+  return out.copy(RAMP[RAMP.length-1].c);
+}
+function buildTerrain(){
+  const pos=terrGeo.attributes.position, col=terrGeo.attributes.color;
+  const hs=new Float32Array(pos.count); let maxH=1e-4;
+  for(let i=0;i<pos.count;i++){ const h=terrainH(pos.getX(i),pos.getZ(i)); hs[i]=h; if(h>maxH)maxH=h; }
+  for(let i=0;i<pos.count;i++){
+    pos.setY(i,hs[i]);
+    rampColor(hs[i]/maxH,_c1);
+    col.setXYZ(i,_c1.r,_c1.g,_c1.b);
+  }
+  pos.needsUpdate=true; col.needsUpdate=true;
+  terrGeo.computeVertexNormals();
+}
+
+/* ---- shared materials ---- */
+const MAT={
+  steel:  new THREE.MeshStandardMaterial({color:0x6E7378,roughness:0.62,metalness:0.35}),
+  wire:   new THREE.LineBasicMaterial({color:0x5C6166}),
+  coil:   new THREE.MeshStandardMaterial({color:0x8A9095,roughness:0.5,metalness:0.45}),
+  pillar: new THREE.MeshStandardMaterial({color:0xF2EEE4,roughness:0.85,flatShading:true}),
+  pillarTop:new THREE.MeshStandardMaterial({color:0xB3312A,roughness:0.8}),
+  lamp:   new THREE.MeshStandardMaterial({color:0xF6E2A8,emissive:0xC8871F,emissiveIntensity:0.6,roughness:0.4}),
+  concrete:new THREE.MeshStandardMaterial({color:0xBFB6A4,roughness:0.9,flatShading:true}),
+  roof:   new THREE.MeshStandardMaterial({color:0x5F6A5A,roughness:0.8,flatShading:true}),
+  track:  new THREE.MeshStandardMaterial({color:0xC2B49A,roughness:0.98}),
+  scrub:  new THREE.MeshStandardMaterial({color:0x5E6B45,roughness:0.9,flatShading:true}),
+  shelter:new THREE.MeshStandardMaterial({color:0xE3DED0,roughness:0.85,flatShading:true}),
+  dark:   new THREE.MeshStandardMaterial({color:0x2B2E31,roughness:0.6,flatShading:true})
+};
+
+/* ---- border installation ---- */
+const worldGroup=new THREE.Group();
+scene.add(worldGroup);
+
+function disposeGroup(g){
+  g.traverse(o=>{ if(o.isMesh||o.isLine){ if(o.geometry) o.geometry.dispose(); } });
+  g.clear();
+}
+
+function buildFence(){
+  const postGeo=new THREE.BoxGeometry(0.22,3.4,0.22);
+  const step=4, n=Math.floor(SPAN/step);
+  const rows=[Z_FENCE, Z_FENCE+2.6];
+  const posts=new THREE.InstancedMesh(postGeo,MAT.steel,n*rows.length);
+  const m=new THREE.Matrix4();
+  let k=0;
+  for(const z of rows){
+    for(let i=0;i<n;i++){
+      const x=-SPAN/2+step*(i+0.5);
+      m.makeTranslation(x,terrainH(x,z)+1.7,z);
+      posts.setMatrixAt(k++,m);
+    }
+  }
+  posts.instanceMatrix.needsUpdate=true;
+  worldGroup.add(posts);
+
+  // horizontal wires
+  const pts=[];
+  for(const z of rows){
+    for(const yOff of [0.5,1.2,1.9,2.6,3.2]){
+      for(let i=0;i<n-1;i++){
+        const x0=-SPAN/2+step*(i+0.5), x1=x0+step;
+        pts.push(x0,terrainH(x0,z)+yOff,z, x1,terrainH(x1,z)+yOff,z);
+      }
+    }
+  }
+  const wg=new THREE.BufferGeometry();
+  wg.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));
+  worldGroup.add(new THREE.LineSegments(wg,MAT.wire));
+
+  // concertina coil along the top of the outer row
+  const coilGeo=new THREE.TorusGeometry(0.62,0.07,5,9);
+  const cn=Math.floor(SPAN/1.7);
+  const coils=new THREE.InstancedMesh(coilGeo,MAT.coil,cn);
+  const q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI/2);
+  const sc=new THREE.Vector3(1,1,1), pv=new THREE.Vector3();
+  for(let i=0;i<cn;i++){
+    const x=-SPAN/2+1.7*(i+0.5);
+    pv.set(x,terrainH(x,Z_FENCE)+3.7,Z_FENCE);
+    coils.setMatrixAt(i,new THREE.Matrix4().compose(pv,q,sc));
+  }
+  coils.instanceMatrix.needsUpdate=true;
+  worldGroup.add(coils);
+}
+
+function buildFloodlights(){
+  const step=40;
+  for(let x=-SPAN/2+20; x<SPAN/2; x+=step){
+    const y=terrainH(x,Z_FENCE-3.5);
+    const g=new THREE.Group();
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.24,9.5,7),MAT.steel);
+    pole.position.y=4.75;
+    const arm=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.16,2.2),MAT.steel);
+    arm.position.set(0,9.3,1.1);
+    const head=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.55,0.9),MAT.dark);
+    head.position.set(0,9.1,2.1);
+    const bulb=new THREE.Mesh(new THREE.SphereGeometry(0.34,10,8),MAT.lamp);
+    bulb.position.set(0,8.85,2.42);
+    g.add(pole,arm,head,bulb);
+    g.position.set(x,y,Z_FENCE-3.5);
+    worldGroup.add(g);
+  }
+}
+
+function buildPillars(){
+  const step=50;
+  for(let x=-SPAN/2+25; x<SPAN/2; x+=step){
+    const y=terrainH(x,Z_PILLAR);
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.62,2.4,4),MAT.pillar);
+    body.position.y=1.2; body.rotation.y=Math.PI/4;
+    const cap=new THREE.Mesh(new THREE.ConeGeometry(0.5,0.5,4),MAT.pillarTop);
+    cap.position.y=2.6; cap.rotation.y=Math.PI/4;
+    g.add(body,cap);
+    g.position.set(x,y,Z_PILLAR);
+    worldGroup.add(g);
+  }
+}
+
+function buildTrack(){
+  const half=3.6, steps=90, pos=[], idx=[];
+  for(let i=0;i<=steps;i++){
+    const x=-SPAN/2+SPAN*i/steps;
+    pos.push(x,terrainH(x,Z_TRACK-half)+0.18,Z_TRACK-half);
+    pos.push(x,terrainH(x,Z_TRACK+half)+0.18,Z_TRACK+half);
+  }
+  for(let i=0;i<steps;i++){
+    const a=i*2, b=a+1, c=a+2, d=a+3;
+    idx.push(a,c,b, b,c,d);
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  worldGroup.add(new THREE.Mesh(g,MAT.track));
+}
+
+function buildTowers(){
+  const step=130;
+  for(let x=-SPAN/2+65; x<SPAN/2; x+=step){
+    const y=terrainH(x,Z_POST);
+    const g=new THREE.Group();
+    for(const dx of [-2.2,2.2]) for(const dz of [-2.2,2.2]){
+      const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.28,9,6),MAT.steel);
+      leg.position.set(dx,4.5,dz);
+      g.add(leg);
+    }
+    const deck=new THREE.Mesh(new THREE.BoxGeometry(6.4,0.4,6.4),MAT.concrete);
+    deck.position.y=9.2;
+    const cabin=new THREE.Mesh(new THREE.BoxGeometry(4.6,2.6,4.6),MAT.shelter);
+    cabin.position.y=10.7;
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(4.4,1.5,4),MAT.roof);
+    roof.position.y=12.7; roof.rotation.y=Math.PI/4;
+    g.add(deck,cabin,roof);
+    g.position.set(x,y,Z_POST);
+    worldGroup.add(g);
+  }
+}
+
+function buildShelter(){
+  // interrogator hut at the cable end: this is the only powered point on the line
+  const x=-SPAN/2+16, z=Z_POST+7;
+  const y=terrainH(x,z);
+  const g=new THREE.Group();
+  const box=new THREE.Mesh(new THREE.BoxGeometry(7,3.4,5),MAT.shelter);
+  box.position.y=1.7;
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(7.6,0.35,5.6),MAT.roof);
+  roof.position.y=3.55;
+  const door=new THREE.Mesh(new THREE.BoxGeometry(0.1,2.1,1.1),MAT.dark);
+  door.position.set(3.52,1.05,0);
+  // the cable run from the hut to the fibre
+  const riser=new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.35,2.4,8),
+    new THREE.MeshStandardMaterial({color:0x0F6F5C,roughness:0.5,metalness:0.15}));
+  riser.position.set(-2.4,1.2,-2.2);
+  g.add(box,roof,door,riser);
+  g.position.set(x,y,z);
+  worldGroup.add(g);
+}
+
+function buildScrub(){
+  const N=210;
+  const geo=new THREE.ConeGeometry(1.5,3.6,6);
+  const mesh=new THREE.InstancedMesh(geo,MAT.scrub,N);
+  const m=new THREE.Matrix4(), pv=new THREE.Vector3(), q=new THREE.Quaternion(), sv=new THREE.Vector3();
+  let k=0, guard=0;
+  while(k<N && guard<4000){
+    guard++;
+    const x=(Math.random()-0.5)*SPAN*0.96;
+    const z=(Math.random()-0.5)*SPAN*0.96;
+    if(z>Z_POST-6 && z<Z_PILLAR+8) continue;      // keep the corridor clear
+    const s=0.55+Math.random()*0.85;
+    pv.set(x,terrainH(x,z)+1.8*s,z);
+    q.setFromAxisAngle(new THREE.Vector3(0,1,0),Math.random()*Math.PI);
+    sv.set(s,s*(0.8+Math.random()*0.5),s);
+    mesh.setMatrixAt(k++,m.compose(pv,q,sv));
+  }
+  mesh.count=k;
+  mesh.instanceMatrix.needsUpdate=true;
+  worldGroup.add(mesh);
+}
+
+/* ---- fibre cable + channels ---- */
+const cableGroup=new THREE.Group();
+scene.add(cableGroup);
+const channels=[];
+const chGeo=new THREE.SphereGeometry(1,12,9);
+
+function buildCable(){
+  disposeGroup(cableGroup);
+  channels.length=0;
+
+  const pts=[];
+  for(let i=0;i<=80;i++){
+    const x=-SPAN/2+SPAN*i/80;
+    pts.push(new THREE.Vector3(x,terrainH(x,0)+0.9,0));
+  }
+  const tube=new THREE.Mesh(
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),200,0.8,8,false),
+    new THREE.MeshStandardMaterial({color:0x0F6F5C,roughness:0.5,metalness:0.15})
+  );
+  cableGroup.add(tube);
+
+  const spacing=SPAN/state.nCh;
+  const rad=Math.max(0.7,Math.min(3.0,spacing*0.26));
+  for(let i=0;i<state.nCh;i++){
+    const x=-SPAN/2+SPAN*(i+0.5)/state.nCh;
+    const y=terrainH(x,0)+0.9;
+    const mesh=new THREE.Mesh(chGeo,new THREE.MeshStandardMaterial({
+      color:0x0F6F5C,roughness:0.45,emissive:0x000000
+    }));
+    mesh.position.set(x,y,0);
+    mesh.scale.setScalar(rad);
+    cableGroup.add(mesh);
+    channels.push({mesh,x,z:0,y,resp:0,base:rad});
+  }
+}
+
+/* ---- source ---- */
+const srcGroup=new THREE.Group();
+scene.add(srcGroup);
+let rotor=null;
+
+function buildSource(){
+  disposeGroup(srcGroup);
+  rotor=null;
+  const mat=MAT.dark;
+  const g=new THREE.Group();
+
+  // While the answer is hidden, the shape itself would give it away, so the
+  // source shows as a neutral marker. Position stays visible; class does not.
+  if(game.on && !game.revealed){
+    const core=new THREE.Mesh(new THREE.SphereGeometry(2.2,16,12),
+      new THREE.MeshStandardMaterial({color:0x585D61,roughness:0.55,flatShading:true}));
+    core.position.y=3.4;
+    const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,3.4,6),MAT.steel);
+    stem.position.y=1.7;
+    g.add(core,stem);
+    srcGroup.add(g);
+    return;
+  }
+
+  if(state.src.key==='vehicle'){
+    const hull=new THREE.Mesh(new THREE.BoxGeometry(9,3.2,5.4),mat); hull.position.y=2.4;
+    const turret=new THREE.Mesh(new THREE.BoxGeometry(4.6,2.2,3.6),mat); turret.position.set(-0.6,5,0);
+    const barrel=new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.25,5,7),mat);
+    barrel.rotation.z=Math.PI/2; barrel.position.set(3.6,5.1,0);
+    g.add(hull,turret,barrel);
+  } else if(state.src.key==='person'){
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(0.8,0.8,3.2,10),mat); body.position.y=2.5;
+    const head=new THREE.Mesh(new THREE.SphereGeometry(0.74,12,9),mat); head.position.y=4.6;
+    g.add(body,head);
+  } else if(state.src.key==='animal'){
+    const body=new THREE.Mesh(new THREE.SphereGeometry(1.9,14,10),mat);
+    body.scale.set(1.6,0.95,0.95); body.position.y=2.3;
+    const head=new THREE.Mesh(new THREE.SphereGeometry(0.9,12,9),mat); head.position.set(-3,3.4,0);
+    g.add(body,head);
+  } else {
+    const body=new THREE.Mesh(new THREE.SphereGeometry(2.4,14,10),mat); body.scale.set(1.7,0.9,0.9);
+    const tail=new THREE.Mesh(new THREE.BoxGeometry(6.4,0.6,0.6),mat); tail.position.x=4.4;
+    rotor=new THREE.Mesh(new THREE.BoxGeometry(13,0.28,1),mat); rotor.position.y=2.5;
+    g.add(body,tail,rotor);
+    g.position.y=26;
+  }
+  srcGroup.add(g);
+}
+
+/* ---- wavefront rings ---- */
+const rings=[];
+{
+  const g=new THREE.RingGeometry(1,1.45,64);
+  g.rotateX(-Math.PI/2);
+  for(let i=0;i<7;i++){
+    const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({
+      color:0xB3312A,transparent:true,opacity:0,side:THREE.DoubleSide
+    }));
+    m.visible=false; scene.add(m);
+    rings.push({mesh:m,r:0,alive:false});
+  }
+}
+let ringTimer=0;
+function emitRing(x,z,y){
+  const r=rings.find(v=>!v.alive);
+  if(!r) return;
+  r.alive=true; r.r=2;
+  r.mesh.visible=true;
+  r.mesh.position.set(x,y+0.7,z);
+}
+function updateRings(dt){
+  const reach=state.coupling*1.9;
+  for(const r of rings){
+    if(!r.alive) continue;
+    r.r+=dt*78;
+    const f=r.r/reach;
+    if(f>=1){ r.alive=false; r.mesh.visible=false; continue; }
+    r.mesh.scale.set(r.r,r.r,r.r);
+    r.mesh.material.opacity=0.34*(1-f)*(1-f);
+  }
+}
+
+function rebuildWorld(){
+  buildTerrain();
+  disposeGroup(worldGroup);
+  buildTrack(); buildFence(); buildFloodlights(); buildPillars();
+  buildTowers(); buildShelter(); buildScrub();
+  buildCable();
+  applyCam();
+}
+
+/* =======================================================================
+   4. CAMERA
+   ======================================================================= */
+const cam={az:-0.72,pol:0.99,rad:470,target:new THREE.Vector3(0,12,0)};
+function applyCam(){
+  cam.pol=Math.max(0.12,Math.min(1.52,cam.pol));
+  cam.rad=Math.max(120,Math.min(1200,cam.rad));
+  camera.position.set(
+    cam.target.x+cam.rad*Math.sin(cam.pol)*Math.cos(cam.az),
+    cam.target.y+cam.rad*Math.cos(cam.pol),
+    cam.target.z+cam.rad*Math.sin(cam.pol)*Math.sin(cam.az)
+  );
+  camera.lookAt(cam.target);
+}
+function preset(p){
+  if(p==='oblique'){ cam.az=-0.72; cam.pol=0.99; cam.rad=470; cam.target.set(0,12,0); }
+  if(p==='map')    { cam.az=-Math.PI/2; cam.pol=0.14; cam.rad=540; cam.target.set(0,0,0); }
+  if(p==='line')   { cam.az=Math.PI; cam.pol=1.36; cam.rad=270; cam.target.set(0,8,0); }
+  applyCam();
+}
+(function bindControls(){
+  const el=renderer.domElement;
+  let mode=0,px=0,py=0;
+  el.addEventListener('contextmenu',e=>e.preventDefault());
+  el.addEventListener('pointerdown',e=>{
+    mode=(e.button===2||e.shiftKey)?2:1; px=e.clientX; py=e.clientY;
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove',e=>{
+    if(!mode) return;
+    const dx=e.clientX-px, dy=e.clientY-py; px=e.clientX; py=e.clientY;
+    if(mode===1){ cam.az-=dx*0.005; cam.pol-=dy*0.005; }
+    else{
+      const k=cam.rad*0.0016;
+      const right=new THREE.Vector3(-Math.sin(cam.az),0,Math.cos(cam.az));
+      const fwd=new THREE.Vector3(-Math.cos(cam.az),0,-Math.sin(cam.az));
+      cam.target.addScaledVector(right,-dx*k);
+      cam.target.addScaledVector(fwd,dy*k);
+    }
+    applyCam();
+  });
+  const end=e=>{ mode=0; try{el.releasePointerCapture(e.pointerId);}catch(_){} };
+  el.addEventListener('pointerup',end);
+  el.addEventListener('pointercancel',end);
+  el.addEventListener('wheel',e=>{
+    e.preventDefault();
+    cam.rad*=(1+Math.sign(e.deltaY)*0.085);
+    applyCam();
+  },{passive:false});
+  let pinch=0;
+  el.addEventListener('touchstart',e=>{
+    if(e.touches.length===2) pinch=Math.hypot(
+      e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+  },{passive:true});
+  el.addEventListener('touchmove',e=>{
+    if(e.touches.length===2&&pinch){
+      const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,
+                         e.touches[0].clientY-e.touches[1].clientY);
+      cam.rad*=pinch/(d||1); pinch=d; applyCam();
+    }
+  },{passive:true});
+})();
+function resize(){
+  const w=view.clientWidth,h=view.clientHeight;
+  if(!w||!h) return;
+  renderer.setSize(w,h);
+  camera.aspect=w/h;
+  camera.updateProjectionMatrix();
+}
+
+/* =======================================================================
+   5. SIGNAL
+   ======================================================================= */
+const trace=new Float32Array(TRACE_LEN);
+let traceW=0, phase=0, noiseRms=0.001, sigRms=0.001;
+let gCache=null;
+function gauss(){
+  if(gCache!==null){ const v=gCache; gCache=null; return v; }
+  let u=0,v=0;
+  while(u===0)u=Math.random();
+  while(v===0)v=Math.random();
+  const r=Math.sqrt(-2*Math.log(u));
+  gCache=r*Math.sin(2*Math.PI*v);
+  return r*Math.cos(2*Math.PI*v);
+}
+const obj={x:0,z:120,prevDist:0,heading:'',done:false};
+
+// centre of the band, unless a round has jittered it
+function activeFreq(){
+  if(state.fOverride!==null) return state.fOverride;
+  return state.src.nom;
+}
+
+function updateChannels(){
+  const L=state.coupling;
+  let best=0,bestI=0;
+  for(let i=0;i<state.nCh;i++){
+    const ch=channels[i];
+    const dx=obj.x-ch.x, dz=obj.z-ch.z;
+    const d2=dx*dx+dz*dz;
+    const a=state.src.amp/(1+d2/(L*L));
+    ch.resp=a;
+    if(a>best){ best=a; bestI=i; }
+  }
+  return {bestI,best};
+}
+
+/* Position along the line from the response profile: centroid of the main
+   lobe only (channels above 0.6 of peak), weighted by amplitude squared.
+   Restricting to the lobe removes the pull of the broad tails, and averaging
+   inside it beats down measurement noise roughly as one over root n, so a
+   denser array locates the source more precisely.                        */
+const LOBE=0.6;
+let estX=NaN, errEma=NaN;
+function estimatePosition(){
+  const meas=new Array(state.nCh);
+  let peak=0;
+  for(let i=0;i<state.nCh;i++){
+    const m=Math.max(0,channels[i].resp+gauss()*state.noise);
+    meas[i]=m;
+    if(m>peak) peak=m;
+  }
+  if(peak<=0) return NaN;
+  const th=peak*LOBE;
+  let num=0,den=0,used=0,bi=0;
+  for(let i=0;i<state.nCh;i++){
+    if(meas[i]>meas[bi]) bi=i;
+    if(meas[i]>=th){ const w=meas[i]*meas[i]; num+=w*channels[i].x; den+=w; used++; }
+  }
+  if(used<2||den<=0) return channels[bi].x;
+  return num/den;
+}
+
+function synth(n,amp){
+  const dw=2*Math.PI*activeFreq()/FS;
+  let sAcc=0,nAcc=0;
+  for(let k=0;k<n;k++){
+    phase+=dw;
+    if(phase>1e6) phase-=1e6;
+    let s=(Math.sin(phase)+0.30*Math.sin(phase*1.5)+0.20*Math.sin(phase*2))*amp;
+    const nz=gauss()*state.noise;
+    sAcc+=s*s; nAcc+=nz*nz;
+    trace[traceW]=s+nz;
+    traceW=(traceW+1)%TRACE_LEN;
+  }
+  if(n>0){
+    const a=0.12;
+    sigRms=(1-a)*sigRms+a*Math.sqrt(sAcc/n);
+    noiseRms=(1-a)*noiseRms+a*Math.sqrt(nAcc/n+1e-9);
+  }
+}
+
+const fre=new Float32Array(NFFT), fim=new Float32Array(NFFT), mag=new Float32Array(NFFT/2);
+const hann=new Float32Array(NFFT);
+for(let i=0;i<NFFT;i++) hann[i]=0.5-0.5*Math.cos(2*Math.PI*i/(NFFT-1));
+function fft(){
+  for(let i=0;i<NFFT;i++){ fre[i]=trace[(traceW+i)%TRACE_LEN]*hann[i]; fim[i]=0; }
+  for(let i=1,j=0;i<NFFT;i++){
+    let bit=NFFT>>1;
+    for(;j&bit;bit>>=1) j^=bit;
+    j^=bit;
+    if(i<j){ let t=fre[i];fre[i]=fre[j];fre[j]=t; t=fim[i];fim[i]=fim[j];fim[j]=t; }
+  }
+  for(let len=2;len<=NFFT;len<<=1){
+    const ang=-2*Math.PI/len, wr=Math.cos(ang), wi=Math.sin(ang);
+    for(let i=0;i<NFFT;i+=len){
+      let cr=1,ci=0;
+      for(let k=0;k<len/2;k++){
+        const ur=fre[i+k], ui=fim[i+k];
+        const vr=fre[i+k+len/2]*cr-fim[i+k+len/2]*ci;
+        const vi=fre[i+k+len/2]*ci+fim[i+k+len/2]*cr;
+        fre[i+k]=ur+vr; fim[i+k]=ui+vi;
+        fre[i+k+len/2]=ur-vr; fim[i+k+len/2]=ui-vi;
+        const ncr=cr*wr-ci*wi; ci=cr*wi+ci*wr; cr=ncr;
+      }
+    }
+  }
+  let m=1e-9;
+  for(let i=0;i<NFFT/2;i++){
+    mag[i]=Math.sqrt(fre[i]*fre[i]+fim[i]*fim[i]);
+    if(mag[i]>m) m=mag[i];
+  }
+  return m;
+}
+
+function bandCentre(s){ return (s.band[0]+s.band[1])/2; }
+
+/* Band membership decides first, then nearest edge as a fallback.
+   Ranking by distance to band centre looks reasonable but is wrong when the
+   bands differ in width: a 52 Hz aerial source is closer to the vehicle
+   centre (37.5 Hz) than to the aerial centre (75 Hz), and would be called a
+   vehicle even though 52 Hz sits inside the aerial band and nowhere near
+   the vehicle band.                                                       */
+function classify(peakHz,snr){
+  if(snr<2.2) return {label:'Nothing detected',conf:0,state:'idle',
+                      detail:'no signal above the noise floor'};
+
+  const inBand=SOURCES.filter(s=>peakHz>=s.band[0]&&peakHz<=s.band[1]);
+  const snrTerm=Math.min(1,(snr-2.2)/12);
+
+  if(inBand.length>1){
+    return {label:'Ambiguous',conf:0.40,state:'warn',
+            detail:inBand.map(s=>s.name.toLowerCase()).join(' or ')};
+  }
+  if(inBand.length===1){
+    const s=inBand[0];
+    const half=(s.band[1]-s.band[0])/2;
+    const centrality=1-Math.min(1,Math.abs(peakHz-bandCentre(s))/half);
+    const conf=0.58+0.41*(0.45*centrality+0.55*snrTerm);
+    return {label:s.name,conf:Math.min(0.99,conf),state:'ok',detail:''};
+  }
+
+  let best=SOURCES[0], bd=Infinity;
+  for(const s of SOURCES){
+    const d=Math.min(Math.abs(peakHz-s.band[0]),Math.abs(peakHz-s.band[1]));
+    if(d<bd){ bd=d; best=s; }
+  }
+  if(bd>10) return {label:'Unrecognised pattern',conf:0.25,state:'warn',
+                    detail:'closest match: '+best.name.toLowerCase()};
+  return {label:best.name,conf:0.50+0.20*snrTerm,state:'ok',
+          detail:bd.toFixed(1)+' Hz outside its band'};
+}
+
+/* =======================================================================
+   6. AUDIO
+   =======================================================================
+   The band of interest is 5 to 100 Hz. Most of that is below or at the
+   edge of hearing, so everything is pitched up by a fixed factor and the
+   factor is stated in the interface. The three partials mirror the
+   synthesis model exactly, so what you hear is what the trace shows.   */
+const PITCH=8;
+const audio={ctx:null,on:false,master:null,partials:[],noiseGain:null};
+
+function initAudio(){
+  if(audio.ctx) return;
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC) return;
+  const ctx=new AC();
+  audio.ctx=ctx;
+
+  audio.master=ctx.createGain();
+  audio.master.gain.value=0;
+  const lp=ctx.createBiquadFilter();
+  lp.type='lowpass'; lp.frequency.value=2600;
+  audio.master.connect(lp);
+  lp.connect(ctx.destination);
+
+  [[1,1],[1.5,0.30],[2,0.20]].forEach(([mult,g])=>{
+    const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=100;
+    const gn=ctx.createGain(); gn.gain.value=g;
+    o.connect(gn); gn.connect(audio.master); o.start();
+    audio.partials.push({o,mult});
+  });
+
+  const len=Math.floor(ctx.sampleRate*2);
+  const buf=ctx.createBuffer(1,len,ctx.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+  const src=ctx.createBufferSource();
+  src.buffer=buf; src.loop=true;
+  const nlp=ctx.createBiquadFilter();
+  nlp.type='lowpass'; nlp.frequency.value=1000;
+  audio.noiseGain=ctx.createGain(); audio.noiseGain.gain.value=0;
+  src.connect(nlp); nlp.connect(audio.noiseGain); audio.noiseGain.connect(audio.master);
+  src.start();
+}
+
+function updateAudio(amp){
+  if(!audio.ctx) return;
+  const t=audio.ctx.currentTime;
+  const f=activeFreq()*PITCH;
+  for(const p of audio.partials) p.o.frequency.setTargetAtTime(f*p.mult,t,0.06);
+  const live=audio.on&&state.running&&!obj.done;
+  const g=live?(0.045+Math.min(0.30,amp*0.42)):0;
+  audio.master.gain.setTargetAtTime(g,t,0.09);
+  audio.noiseGain.gain.setTargetAtTime(live?Math.min(0.30,state.noise*0.9):0,t,0.12);
+}
+
+/* =======================================================================
+   7. UI
+   ======================================================================= */
+const $=id=>document.getElementById(id);
+const sliders=[];
+
+const srcChoice=$('srcChoice');
+SOURCES.forEach(s=>{
+  const b=document.createElement('button');
+  b.className='chip'; b.type='button';
+  b.innerHTML='<b>'+s.name+'</b><span>'+s.note+'</span>';
+  b.setAttribute('aria-pressed',String(s===state.src));
+  b.addEventListener('click',()=>{
+    if(game.on) return;
+    state.src=s; state.fOverride=null;
+    syncSrcChips();
+    buildSource(); resetTrack();
+  });
+  srcChoice.appendChild(b);
+});
+function syncSrcChips(){
+  const show=!game.on||game.revealed;   // after a reveal, mark the true source
+  [...srcChoice.children].forEach((c,i)=>
+    c.setAttribute('aria-pressed',String(SOURCES[i]===state.src&&show)));
+}
+
+const trackChoice=$('trackChoice');
+TRACKS.forEach(t=>{
+  const b=document.createElement('button');
+  b.className='chip'; b.type='button';
+  b.innerHTML='<b>'+t.name+'</b>';
+  b.setAttribute('aria-pressed',String(t===state.track));
+  b.addEventListener('click',()=>{
+    state.track=t;
+    [...trackChoice.children].forEach((c,i)=>
+      c.setAttribute('aria-pressed',String(TRACKS[i]===state.track)));
+    resetTrack();
+  });
+  trackChoice.appendChild(b);
+});
+
+function slider(id,outId,fmt,key,after){
+  const el=$(id), out=$(outId);
+  const rec={el,out,fmt,key};
+  sliders.push(rec);
+  const sync=()=>{
+    state[key]=parseFloat(el.value);
+    out.textContent=fmt(state[key]);
+    if(after) after();
+  };
+  el.addEventListener('input',sync);
+  sync();
+}
+slider('sSpeed','oSpeed',v=>v.toFixed(1)+' m/s','speed');
+slider('sStand','oStand',v=>v.toFixed(0)+' m','standoff',()=>resetTrack());
+slider('sCoup','oCoup',v=>v.toFixed(0)+' m','coupling');
+slider('sNoise','oNoise',v=>v.toFixed(2),'noise');
+slider('sRug','oRug',v=>v.toFixed(2),'relief',()=>rebuildWorld());
+function syncSliders(){
+  for(const r of sliders){ r.el.value=String(state[r.key]); r.out.textContent=r.fmt(state[r.key]); }
+}
+
+const sCh=$('sCh'), oCh=$('oCh'), chHint=$('chHint');
+sCh.max=String(CH_OPTIONS.length-1);
+sCh.value=String(CH_OPTIONS.indexOf(state.nCh));
+function syncCh(){
+  state.nCh=CH_OPTIONS[parseInt(sCh.value,10)];
+  const spacing=SPAN/state.nCh;
+  oCh.textContent=state.nCh;
+  $('hdrCh').textContent=state.nCh;
+  chHint.textContent='One channel every '+spacing.toFixed(1)+
+    ' m. A denser array pins the position down better, because the estimate is '+
+    'averaged over more channels, but it also costs more data to carry and process.';
+  buildCable();
+}
+sCh.addEventListener('input',syncCh);
+syncCh();
+
+$('btnPlay').addEventListener('click',()=>{
+  state.running=!state.running;
+  $('btnPlay').textContent=state.running?'Pause':'Start';
+  if(state.running&&obj.done) resetTrack();
+});
+$('btnTerrain').addEventListener('click',()=>{
+  state.seed=Math.random()*1000;
+  rebuildWorld();
+});
+$('btnSound').addEventListener('click',()=>{
+  initAudio();                                  // must happen inside a gesture
+  if(!audio.ctx){ $('btnSound').textContent='No audio'; return; }
+  audio.on=!audio.on;
+  if(audio.on&&audio.ctx.state==='suspended') audio.ctx.resume();
+  $('btnSound').textContent=audio.on?('Sound on \u00b7 '+PITCH+'\u00d7 pitch'):'Sound off';
+  $('btnSound').setAttribute('aria-pressed',String(audio.on));
+});
+$('camObl').addEventListener('click',()=>preset('oblique'));
+$('camMap').addEventListener('click',()=>preset('map'));
+$('camLine').addEventListener('click',()=>preset('line'));
+
+/* ---- guess mode ---- */
+const game={on:false,answer:null,revealed:true,score:0,rounds:0,streak:0,best:0};
+const guessBtns=$('guessBtns');
+SOURCES.forEach(s=>{
+  const b=document.createElement('button');
+  b.className='chip'; b.type='button';
+  b.innerHTML='<b>'+s.name+'</b>';
+  b.addEventListener('click',()=>makeGuess(s));
+  guessBtns.appendChild(b);
+});
+
+function newRound(){
+  game.answer=SOURCES[Math.floor(Math.random()*SOURCES.length)];
+  game.revealed=false;
+  state.src=game.answer;
+  // jitter the frequency anywhere inside the band, so overlapping bands
+  // produce genuinely hard calls rather than a lookup
+  const b=game.answer.band;
+  state.fOverride=b[0]+Math.random()*(b[1]-b[0]);
+  state.track=TRACKS[Math.floor(Math.random()*TRACKS.length)];
+
+  /* Pick a standoff and noise level that actually produce a readable signal
+     at the start of the round. Without this guard roughly one round in eight
+     opens below the noise floor, leaving nothing to judge. A weak source
+     therefore draws a quieter night or a closer pass, which is fair.      */
+  const RMS_SHAPE=0.752;                       // rms of the composite waveform
+  let okRound=false;
+  for(let tries=0; tries<60 && !okRound; tries++){
+    state.standoff=25+Math.round(Math.random()*14)*5;
+    state.noise=Math.round((0.02+Math.random()*0.08)*100)/100;
+    const d=(state.track.key==='away')?12:state.standoff;
+    const atten=1/(1+(d*d)/(state.coupling*state.coupling));
+    if((game.answer.amp*atten*RMS_SHAPE)/state.noise>=3.5) okRound=true;
+  }
+  if(!okRound){ state.standoff=30; state.noise=0.02; }
+  [...trackChoice.children].forEach((c,i)=>
+    c.setAttribute('aria-pressed',String(TRACKS[i]===state.track)));
+  syncSliders(); syncSrcChips();
+  buildSource(); resetTrack();
+  state.running=true;
+  $('btnPlay').textContent='Pause';
+  setGuessEnabled(true);
+  $('gameFb').className='';
+  $('gameFb').textContent='Listen and read the trace, then make your call.';
+}
+
+function setGuessEnabled(on){
+  [...guessBtns.children].forEach(c=>{ c.disabled=!on; });
+}
+
+function makeGuess(pick){
+  if(!game.on||game.revealed) return;
+  game.revealed=true;
+  game.rounds++;
+  const truth=game.answer;
+  const f=state.fOverride;
+  const correct=pick===truth;
+  if(correct){
+    game.score++; game.streak++;
+    if(game.streak>game.best) game.best=game.streak;
+  } else {
+    game.streak=0;
+  }
+  const overlap=(f>=10&&f<=15);
+  let msg;
+  if(correct){
+    msg='Correct. '+truth.name.toLowerCase()+' at '+f.toFixed(1)+' Hz.';
+    if(overlap) msg+=' And that one sat in the 10 to 15 Hz overlap, where animal '+
+      'and person are genuinely hard to separate.';
+  } else {
+    msg='Not quite. It was a '+truth.name.toLowerCase()+' at '+f.toFixed(1)+' Hz.';
+    if(overlap) msg+=' That frequency sits in the overlap between the animal and '+
+      'person bands, so peak frequency alone cannot settle it. This is exactly the '+
+      'case the trained models are for.';
+  }
+  const fb=$('gameFb');
+  fb.className=correct?'ok':'no';
+  fb.textContent=msg;
+  $('gScore').textContent=game.score+' / '+game.rounds;
+  $('gStreak').textContent=String(game.streak);
+  $('gBest').textContent=String(game.best);
+  setGuessEnabled(false);
+  syncSrcChips();
+  buildSource();          // now safe to show what it actually was
+}
+
+$('btnNext').addEventListener('click',()=>{ if(game.on) newRound(); });
+
+$('btnGame').addEventListener('click',()=>{
+  game.on=!game.on;
+  $('btnGame').setAttribute('aria-pressed',String(game.on));
+  $('btnGame').textContent=game.on?'Exit guess mode':'Guess mode';
+  $('gameSect').hidden=!game.on;
+  $('srcLock').hidden=!game.on;
+  [...srcChoice.children].forEach(c=>{ c.disabled=game.on; });
+  if(game.on){
+    newRound();
+  } else {
+    state.fOverride=null;
+    game.revealed=true;
+    syncSrcChips();
+    buildSource();
+  }
+});
+
+/* ---- track ---- */
+function resetTrack(){
+  obj.done=false;
+  if(state.track.key==='cross'){ obj.x=0; obj.z=state.standoff; }
+  else if(state.track.key==='along'){ obj.x=-SPAN/2+15; obj.z=state.standoff; }
+  else { obj.x=0; obj.z=12; }
+  obj.prevDist=0;
+  for(const r of rings){ r.alive=false; r.mesh.visible=false; }
+}
+function stepTrack(dt){
+  const v=state.speed*dt;
+  if(state.track.key==='cross'){
+    obj.z-=v;
+    if(obj.z<-state.standoff){ obj.z=-state.standoff; obj.done=true; }
+  } else if(state.track.key==='along'){
+    obj.x+=v;
+    if(obj.x>SPAN/2-15){ obj.x=SPAN/2-15; obj.done=true; }
+  } else {
+    obj.z+=v;
+    if(obj.z>200){ obj.z=200; obj.done=true; }
+  }
+}
+
+/* =======================================================================
+   8. PLOTS
+   ======================================================================= */
+function fitCanvas(c){
+  const r=Math.min(window.devicePixelRatio,2);
+  const w=c.clientWidth,h=c.clientHeight;
+  if(!w||!h) return null;
+  if(c.width!==w*r||c.height!==h*r){ c.width=w*r; c.height=h*r; }
+  const ctx=c.getContext('2d');
+  ctx.setTransform(r,0,0,r,0,0);
+  ctx.clearRect(0,0,w,h);
+  return {ctx,w,h};
+}
+
+function drawTrace(){
+  const f=fitCanvas($('cTrace'));
+  if(!f) return;
+  const {ctx,w,h}=f, mid=h/2;
+  ctx.strokeStyle='#E2DDD2'; ctx.lineWidth=1;
+  for(let k=1;k<5;k++){ const y=h*k/5; ctx.beginPath(); ctx.moveTo(0,y+0.5); ctx.lineTo(w,y+0.5); ctx.stroke(); }
+  ctx.strokeStyle='#CFC9BC';
+  ctx.beginPath(); ctx.moveTo(0,mid+0.5); ctx.lineTo(w,mid+0.5); ctx.stroke();
+
+  let peak=0.12;
+  for(let i=0;i<TRACE_LEN;i++) peak=Math.max(peak,Math.abs(trace[i]));
+  const sc=(mid-5)/peak;
+  const xs=i=>w*i/(TRACE_LEN-1);
+  const ys=i=>mid-trace[(traceW+i)%TRACE_LEN]*sc;
+
+  ctx.beginPath(); ctx.moveTo(0,mid);
+  for(let i=0;i<TRACE_LEN;i++) ctx.lineTo(xs(i),Math.min(ys(i),mid));
+  ctx.lineTo(w,mid); ctx.closePath();
+  ctx.fillStyle='rgba(179,49,42,0.30)'; ctx.fill();
+
+  ctx.beginPath(); ctx.moveTo(0,mid);
+  for(let i=0;i<TRACE_LEN;i++) ctx.lineTo(xs(i),Math.max(ys(i),mid));
+  ctx.lineTo(w,mid); ctx.closePath();
+  ctx.fillStyle='rgba(31,95,168,0.22)'; ctx.fill();
+
+  ctx.beginPath(); ctx.moveTo(xs(0),ys(0));
+  for(let i=1;i<TRACE_LEN;i++) ctx.lineTo(xs(i),ys(i));
+  ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.stroke();
+}
+
+function drawSpec(peakMax,peakHz){
+  const f=fitCanvas($('cSpec'));
+  if(!f) return;
+  const {ctx,w,h}=f;
+  const FMAX=120, bins=Math.floor(FMAX*NFFT/FS), xOf=hz=>w*hz/FMAX;
+  const blind=game.on&&!game.revealed;
+
+  if(!blind){
+    const shades=['rgba(31,95,168,0.07)','rgba(31,95,168,0.11)',
+                  'rgba(179,49,42,0.07)','rgba(179,49,42,0.11)'];
+    SOURCES.forEach((s,i)=>{
+      ctx.fillStyle=shades[i];
+      ctx.fillRect(xOf(s.band[0]),0,xOf(s.band[1])-xOf(s.band[0]),h);
+    });
+  }
+  ctx.strokeStyle='#E2DDD2'; ctx.lineWidth=1;
+  for(let hz=20;hz<FMAX;hz+=20){
+    ctx.beginPath(); ctx.moveTo(xOf(hz)+0.5,0); ctx.lineTo(xOf(hz)+0.5,h-13); ctx.stroke();
+  }
+  const base=h-13;
+  ctx.beginPath(); ctx.moveTo(0,base);
+  for(let i=1;i<=bins;i++){
+    ctx.lineTo(xOf(i*FS/NFFT),base-(mag[i]/peakMax)*(base-4));
+  }
+  ctx.lineTo(xOf(FMAX),base); ctx.closePath();
+  ctx.fillStyle='rgba(15,111,92,0.20)'; ctx.fill();
+  ctx.strokeStyle='#0F6F5C'; ctx.lineWidth=1.2; ctx.stroke();
+
+  if(!blind&&peakHz>0&&peakHz<FMAX){
+    ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(xOf(peakHz)+0.5,0); ctx.lineTo(xOf(peakHz)+0.5,base); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.fillStyle='#7C8085';
+  ctx.font='9px ui-monospace, Menlo, Consolas, monospace';
+  for(let hz=0;hz<=FMAX;hz+=20){
+    ctx.textAlign=hz===0?'left':(hz===FMAX?'right':'center');
+    ctx.fillText(hz+(hz===FMAX?' Hz':''),Math.min(w-1,Math.max(1,xOf(hz))),h-3);
+  }
+}
+
+function drawChans(){
+  const f=fitCanvas($('cChans'));
+  if(!f) return;
+  const {ctx,w,h}=f, base=h-12, n=state.nCh;
+  ctx.strokeStyle='#E2DDD2'; ctx.lineWidth=1;
+  for(let k=1;k<4;k++){ const y=base*k/4; ctx.beginPath(); ctx.moveTo(0,y+0.5); ctx.lineTo(w,y+0.5); ctx.stroke(); }
+  const slot=w/n, bw=Math.max(1.2,slot-Math.max(1,slot*0.22));
+  for(let i=0;i<n;i++){
+    const t=Math.min(1,channels[i].resp/state.src.amp);
+    const x=w*(i+0.5)/n, bh=t*(base-3);
+    ctx.fillStyle=t>0.55?'#B3312A':t>0.22?'#C8871F':'#1F5FA8';
+    ctx.fillRect(x-bw/2,base-bh,bw,Math.max(0.6,bh));
+  }
+  ctx.strokeStyle='#CFC9BC';
+  ctx.beginPath(); ctx.moveTo(0,base+0.5); ctx.lineTo(w,base+0.5); ctx.stroke();
+  if(isFinite(estX)){
+    const px=w*(estX+SPAN/2)/SPAN;
+    ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(px+0.5,0); ctx.lineTo(px+0.5,base); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.fillStyle='#7C8085';
+  ctx.font='9px ui-monospace, Menlo, Consolas, monospace';
+  ctx.textAlign='left'; ctx.fillText('CH01',1,h-2);
+  ctx.textAlign='center'; ctx.fillText('along the line',w/2,h-2);
+  ctx.textAlign='right'; ctx.fillText('CH'+state.nCh,w-1,h-2);
+}
+
+/* =======================================================================
+   9. READOUT
+   ======================================================================= */
+let lastSpoken='';
+const logEl=$('log');
+const logRows=[];                       // kept so the log can be exported
+let lastLogged='', logCount=0, settleFrames=0;
+function pushLog(cls,conf,dist,ch){
+  const now=new Date();
+  const t=now.toLocaleTimeString('en-GB',{hour12:false});
+  logRows.push({iso:now.toISOString(), cls, conf, dist, ch:ch+1,
+                peak:peakHz, src:state.src.name, track:state.track.name,
+                nCh:state.nCh, coupling:state.coupling, noise:state.noise});
+  if(logCount===0) logEl.innerHTML='';
+  const d=document.createElement('div');
+  d.textContent=t+'  '+cls.toLowerCase().padEnd(14).slice(0,14)+' '+
+    dist.toFixed(0).padStart(3)+' m  CH'+String(ch+1).padStart(2,'0')+'  '+
+    Math.round(conf*100)+'%';
+  logEl.prepend(d);
+  while(logEl.children.length>7) logEl.lastChild.remove();
+  logCount++;
+}
+
+function updateReadout(verdict,peakHz,dist,bestI,snr){
+  const blind=game.on&&!game.revealed;
+  const v=$('verdict');
+  v.className='verdict'+(blind?' idle':verdict.state==='ok'?'':verdict.state==='warn'?' warn':' idle');
+  if(blind){
+    $('vCls').textContent='Held back';
+    $('vConf').textContent='make your call first';
+    $('mPeak').textContent='\u2014';
+  } else {
+    $('vCls').textContent=verdict.label;
+    $('vConf').textContent=verdict.state==='idle'?verdict.detail:
+      (verdict.detail?verdict.detail+' \u00b7 ':'')+'confidence '+Math.round(verdict.conf*100)+'%';
+    $('mPeak').textContent=snr<2.2?'\u2014':peakHz.toFixed(1)+' Hz';
+  }
+  $('mDist').textContent=dist.toFixed(0)+' m';
+  $('mHead').textContent=obj.heading||'\u2014';
+  $('mSide').textContent=obj.z>Z_PILLAR?'beyond the pillars'
+    :obj.z>Z_FENCE?'between fence and line'
+    :obj.z>0?'inside the fence':'past the cable';
+  $('mCh').textContent='CH'+String(bestI+1).padStart(2,'0');
+  $('mSnr').textContent=snr<0.05?'\u2014':snr.toFixed(1)+'\u00d7';
+  $('mSpace').textContent=(SPAN/state.nCh).toFixed(1)+' m \u00d7 '+state.nCh;
+  const spoken=blind?'Class held back until you call it'
+    :verdict.label+(verdict.state==='ok'?', confidence '+Math.round(verdict.conf*100)+' percent':'')
+     +'. Standoff '+dist.toFixed(0)+' metres.';
+  if(spoken!==lastSpoken){ lastSpoken=spoken; $('live').textContent=spoken; }
+  $('mErr').textContent=(snr<2.2||!isFinite(errEma))?'\u2014':'\u00b1'+errEma.toFixed(1)+' m';
+  drawChans();
+}
+
+/* =======================================================================
+   10. LOOP
+   ======================================================================= */
+let last=performance.now(), fftTick=0, peakMax=1, peakHz=0;
+function frame(now){
+  if(hidden) return;                    // stop rendering in a background tab
+  const dt=Math.min(0.05,(now-last)/1000);
+  last=now;
+
+  if(state.running&&!obj.done) stepTrack(dt);
+
+  const gy=terrainH(obj.x,obj.z);
+  srcGroup.position.set(obj.x,gy,obj.z);
+  srcGroup.rotation.y=(state.track.key==='along')?0:Math.PI/2;
+  if(rotor) rotor.rotation.y+=dt*26;
+
+  const {bestI,best}=updateChannels();
+  const dist=Math.abs(obj.z);
+
+  if(obj.prevDist){
+    const d=dist-obj.prevDist;
+    obj.heading=Math.abs(d)<0.02?'along the line':d<0?'closing':'receding';
+  }
+  obj.prevDist=dist;
+
+  for(let i=0;i<state.nCh;i++){
+    const ch=channels[i];
+    const t=Math.min(1,ch.resp/state.src.amp);
+    ch.mesh.material.emissive.setRGB(t*0.78,t*0.50,t*0.06);
+    ch.mesh.scale.setScalar(ch.base*(1+t*1.5));
+  }
+
+  if(state.running&&!obj.done){
+    synth(Math.max(1,Math.round(dt*FS)),best);
+    ringTimer+=dt;
+    if(ringTimer>1/Math.max(1,activeFreq()/12)){ ringTimer=0; emitRing(obj.x,obj.z,gy); }
+  } else {
+    synth(Math.max(1,Math.round(dt*FS)),0);
+  }
+  updateRings(dt);
+  updateAudio(best);
+
+  fftTick+=dt;
+  if(fftTick>0.09){
+    fftTick=0;
+    peakMax=Math.max(fft(),8);
+    let bi=1,bv=0;
+    const lim=Math.floor(130*NFFT/FS);
+    for(let i=2;i<lim;i++) if(mag[i]>bv){ bv=mag[i]; bi=i; }
+    peakHz=bi*FS/NFFT;
+
+    estX=estimatePosition();
+    if(isFinite(estX)){
+      const e=Math.abs(estX-obj.x);
+      errEma=isFinite(errEma)?errEma*0.75+e*0.25:e;
+    }
+
+    const snr=sigRms/Math.max(1e-6,noiseRms);
+    const verdict=classify(peakHz,snr);
+    updateReadout(verdict,peakHz,dist,bestI,snr);
+
+    if(verdict.state==='ok'&&!(game.on&&!game.revealed)){
+      settleFrames++;
+      const sig=verdict.label+'|'+Math.round(dist/25);
+      if(settleFrames>4&&sig!==lastLogged){
+        lastLogged=sig;
+        pushLog(verdict.label,verdict.conf,dist,bestI);
+      }
+    } else settleFrames=0;
+
+    drawTrace();
+    drawSpec(peakMax,peakHz);
+  }
+
+  renderer.render(scene,camera);
+  requestAnimationFrame(frame);
+}
+
+
+/* =======================================================================
+   12. PROVENANCE, EXPORT, SHARE, HELP, KEYBOARD, VISIBILITY
+   ======================================================================= */
+$('verLabel').textContent='v'+BUILD.version+' \u00b7 '+BUILD.date;
+
+function scenarioText(){
+  return [
+    'source='+state.src.name,
+    'nominal_freq_Hz='+activeFreq().toFixed(2),
+    'track='+state.track.name,
+    'speed_m_s='+state.speed,
+    'track_offset_m='+state.standoff,
+    'receivers='+state.nCh,
+    'channel_spacing_m='+(SPAN/state.nCh).toFixed(2),
+    'soil_coupling_m='+state.coupling,
+    'ambient_noise='+state.noise,
+    'terrain_relief='+state.relief,
+    'terrain_seed='+state.seed.toFixed(3)
+  ];
+}
+
+let toastTimer=null;
+function toast(msg){
+  const t=$('toast');
+  t.textContent=msg; t.hidden=false;
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{ t.hidden=true; }, 2200);
+}
+
+function download(name, mime, data){
+  const blob=(data instanceof Blob)?data:new Blob([data],{type:mime});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+function stampName(base, ext){
+  const d=new Date();
+  const p=n=>String(n).padStart(2,'0');
+  return base+'_'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+
+         '_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())+'.'+ext;
+}
+
+/* ---- trace window as CSV, with the scenario in the header ---- */
+$('btnCsvTrace').addEventListener('click',()=>{
+  const lines=[
+    '# DAS Border Sensing Simulator v'+BUILD.version,
+    '# SIMULATED DATA - synthesised from a physical model, not field measurements',
+    '# exported '+new Date().toISOString(),
+    '# sample_rate_Hz='+FS+'  window_samples='+TRACE_LEN,
+    ...scenarioText().map(l=>'# '+l),
+    'sample_index,time_s,amplitude'
+  ];
+  for(let i=0;i<TRACE_LEN;i++){
+    const v=trace[(traceW+i)%TRACE_LEN];
+    lines.push(i+','+(i/FS).toFixed(6)+','+v.toFixed(6));
+  }
+  download(stampName('das_trace','csv'),'text/csv',lines.join('\n'));
+  toast('Trace window exported');
+});
+
+/* ---- detection log as CSV ---- */
+$('btnCsvLog').addEventListener('click',()=>{
+  if(logRows.length===0){ toast('No detections logged yet'); return; }
+  const lines=[
+    '# DAS Border Sensing Simulator v'+BUILD.version,
+    '# SIMULATED DATA - not operational output',
+    '# exported '+new Date().toISOString(),
+    'timestamp_utc,class,confidence,standoff_m,strongest_channel,spectral_peak_Hz,'+
+    'true_source,track,receivers,soil_coupling_m,ambient_noise'
+  ];
+  for(const r of logRows){
+    lines.push([r.iso,'"'+r.cls+'"',r.conf.toFixed(3),r.dist.toFixed(1),r.ch,
+                r.peak.toFixed(2),'"'+r.src+'"','"'+r.track+'"',r.nCh,
+                r.coupling,r.noise].join(','));
+  }
+  download(stampName('das_detections','csv'),'text/csv',lines.join('\n'));
+  toast(logRows.length+' detections exported');
+});
+
+/* ---- captioned PNG of the 3D view, usable as a report figure ---- */
+$('btnPng').addEventListener('click',()=>{
+  renderer.render(scene,camera);                 // guarantee a fresh buffer
+  const src=renderer.domElement;
+  const pad=14, capH=76;
+  const out=document.createElement('canvas');
+  out.width=src.width; out.height=src.height+Math.round(capH*(src.width/src.clientWidth||1));
+  const g=out.getContext('2d');
+  const k=src.width/(src.clientWidth||src.width);   // device pixel scale
+
+  g.fillStyle='#EDEAE3'; g.fillRect(0,0,out.width,out.height);
+  g.drawImage(src,0,0);
+
+  const y0=src.height;
+  g.fillStyle='#000';
+  g.fillRect(pad*k, y0+8*k, out.width-2*pad*k, 1*k);
+  g.textBaseline='top';
+  g.fillStyle='#000';
+  g.font='600 '+(13*k)+'px ui-sans-serif, Helvetica, Arial, sans-serif';
+  g.fillText('DAS Border Sensing Simulator  \u00b7  IIT Kharagpur', pad*k, y0+16*k);
+  g.fillStyle='#B3312A';
+  g.font='600 '+(10*k)+'px ui-sans-serif, Helvetica, Arial, sans-serif';
+  g.fillText('SIMULATED DATA \u2014 NOT OPERATIONAL OUTPUT', pad*k, y0+34*k);
+  g.fillStyle='#4A4E52';
+  g.font=(9.5*k)+'px ui-monospace, Menlo, Consolas, monospace';
+  const cap=scenarioText();
+  const half=Math.ceil(cap.length/2);
+  cap.slice(0,half).forEach((t,i)=>g.fillText(t, pad*k, (y0+50*k)+i*11*k));
+  cap.slice(half).forEach((t,i)=>g.fillText(t, out.width*0.42, (y0+50*k)+i*11*k));
+
+  out.toBlob(b=>{
+    if(!b){ toast('Could not capture the view'); return; }
+    download(stampName('das_view','png'),'image/png',b);
+    toast('View exported as PNG');
+  },'image/png');
+});
+
+/* ---- shareable scenario link ---- */
+function writeHash(){
+  const p=new URLSearchParams();
+  p.set('s',state.src.key);
+  p.set('t',state.track.key);
+  p.set('v',state.speed);
+  p.set('o',state.standoff);
+  p.set('n',state.nCh);
+  p.set('c',state.coupling);
+  p.set('z',state.noise);
+  p.set('r',state.relief);
+  p.set('d',state.seed.toFixed(3));
+  return p.toString();
+}
+function readHash(){
+  const raw=location.hash.replace(/^#/,'');
+  if(!raw) return false;
+  const p=new URLSearchParams(raw);
+  let touched=false;
+  const src=SOURCES.find(x=>x.key===p.get('s'));
+  if(src){ state.src=src; touched=true; }
+  const tr=TRACKS.find(x=>x.key===p.get('t'));
+  if(tr){ state.track=tr; touched=true; }
+  const num=(key,lo,hi)=>{
+    const v=parseFloat(p.get(key));
+    if(!isFinite(v)) return null;
+    return Math.max(lo,Math.min(hi,v));
+  };
+  const v=num('v',1,20);      if(v!==null){ state.speed=v; touched=true; }
+  const o=num('o',10,180);    if(o!==null){ state.standoff=o; touched=true; }
+  const c=num('c',15,120);    if(c!==null){ state.coupling=c; touched=true; }
+  const z=num('z',0,0.5);     if(z!==null){ state.noise=z; touched=true; }
+  const r=num('r',0,1);       if(r!==null){ state.relief=r; touched=true; }
+  const d=num('d',0,100000);  if(d!==null){ state.seed=d; touched=true; }
+  const n=parseInt(p.get('n'),10);
+  if(CH_OPTIONS.indexOf(n)>=0){ state.nCh=n; touched=true; }
+  return touched;
+}
+$('btnShare').addEventListener('click',()=>{
+  const url=location.origin+location.pathname+location.search+'#'+writeHash();
+  const done=()=>toast('Link copied \u00b7 opens this exact scenario');
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(done,()=>{
+      location.hash=writeHash(); toast('Link is in the address bar');
+    });
+  } else {
+    location.hash=writeHash();
+    toast('Link is in the address bar');
+  }
+});
+
+/* ---- help ---- */
+function showHelp(on){
+  $('help').hidden=!on;
+  if(on) $('helpClose').focus();
+}
+$('btnHelp').addEventListener('click',()=>showHelp(true));
+$('helpClose').addEventListener('click',()=>showHelp(false));
+$('help').addEventListener('click',e=>{ if(e.target===$('help')) showHelp(false); });
+
+/* ---- keyboard: camera and shortcuts ---- */
+window.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+  if(e.key==='Escape'){ showHelp(false); return; }
+  if(e.key==='h'||e.key==='H'){ showHelp($('help').hidden); return; }
+  if(!$('help').hidden) return;
+  let used=true;
+  switch(e.key){
+    case 'ArrowLeft':  cam.az-=0.07; break;
+    case 'ArrowRight': cam.az+=0.07; break;
+    case 'ArrowUp':    cam.pol-=0.05; break;
+    case 'ArrowDown':  cam.pol+=0.05; break;
+    case '+': case '=': cam.rad*=0.9; break;
+    case '-': case '_': cam.rad*=1.1; break;
+    case 'r': case 'R': preset('oblique'); break;
+    case '1': preset('oblique'); break;
+    case '2': preset('map'); break;
+    case '3': preset('line'); break;
+    case ' ': $('btnPlay').click(); break;
+    default: used=false;
+  }
+  if(used){ e.preventDefault(); applyCam(); }
+});
+
+/* ---- stop work when the tab is not visible ---- */
+let hidden=false;
+document.addEventListener('visibilitychange',()=>{
+  hidden=document.hidden;
+  if(hidden&&audio.ctx&&audio.ctx.state==='running') audio.ctx.suspend();
+  if(!hidden&&audio.on&&audio.ctx&&audio.ctx.state==='suspended') audio.ctx.resume();
+  if(!hidden){ last=performance.now(); requestAnimationFrame(frame); }
+});
+
+/* ---- caption printed onto the page when sent to a printer ---- */
+window.addEventListener('beforeprint',()=>{
+  $('printNote').textContent='SIMULATED DATA \u2014 not operational output.  '+
+    scenarioText().join('   ')+'   Exported '+new Date().toISOString()+
+    '   DAS Border Sensing Simulator v'+BUILD.version;
+});
+
+/* =======================================================================
+   13. BOOT
+   ======================================================================= */
+const fromLink=readHash();
+if(fromLink){ syncSliders(); syncSrcChips();
+  sCh.value=String(CH_OPTIONS.indexOf(state.nCh));
+  oCh.textContent=state.nCh; $('hdrCh').textContent=state.nCh;
+  [...trackChoice.children].forEach((c,i)=>
+    c.setAttribute('aria-pressed',String(TRACKS[i]===state.track)));
+}
+rebuildWorld();
+buildSource();
+resetTrack();
+resize();
+applyCam();
+window.addEventListener('resize',()=>{
+  resize(); drawTrace(); drawSpec(peakMax,peakHz); drawChans();
+});
+
+// first paint, then clear the boot overlay and offer the guide
+renderer.render(scene,camera);
+drawTrace(); drawSpec(peakMax,peakHz); drawChans();
+$('boot').hidden=true;
+if(!fromLink) showHelp(true);
+else toast('Scenario loaded from link');
+requestAnimationFrame(frame);
+
+}  /* end main() */
+</script>
+</body>
+</html>
