@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DAS border sensing simulation</title>
+<style>
+  :root{
+    --paper:#EDEAE3;
+    --paper-2:#F6F4EF;
+    --panel:#FBFAF7;
+    --ink:#000000;
+    --graphite:#4A4E52;
+    --mute:#7C8085;
+    --rule:#CFC9BC;
+    --rule-soft:#E2DDD2;
+    --neg:#1F5FA8;
+    --pos:#B3312A;
+    --fibre:#0F6F5C;
+    --hot:#C8871F;
+    --sans: ui-sans-serif, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--sans); font-size:13px; line-height:1.45;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font-family:inherit; font-size:inherit; color:inherit; cursor:pointer;}
+  button:focus-visible, input:focus-visible{outline:2px solid var(--fibre); outline-offset:2px;}
+
+  #app{display:flex; flex-direction:column; height:100vh;}
+
+  /* ---------- header ---------- */
+  header{
+    display:flex; align-items:baseline; gap:14px;
+    padding:12px 18px 11px; border-bottom:1px solid var(--rule);
+    background:var(--paper-2);
+  }
+  header h1{margin:0; font-size:15px; font-weight:600; letter-spacing:-0.01em;}
+  header p{margin:0; color:var(--mute); font-size:12px;}
+  header .spacer{flex:1;}
+  .btn{
+    background:transparent; border:1px solid var(--ink); border-radius:2px;
+    padding:5px 11px; font-size:12px; font-weight:500;
+  }
+  .btn:hover{background:var(--ink); color:var(--paper-2);}
+  .btn.solid{background:var(--ink); color:var(--paper-2);}
+  .btn.solid:hover{background:var(--graphite); border-color:var(--graphite);}
+
+  /* ---------- main 3 columns ---------- */
+  #main{display:flex; flex:1; min-height:0;}
+
+  .panel{
+    background:var(--panel); flex-shrink:0;
+    overflow-y:auto; overflow-x:hidden;
+  }
+  #left{width:252px; border-right:1px solid var(--rule);}
+  #right{width:286px; border-left:1px solid var(--rule);}
+
+  .sect{padding:14px 16px 16px; border-bottom:1px solid var(--rule-soft);}
+  .sect:last-child{border-bottom:none;}
+  .sect h2{
+    margin:0 0 11px; font-size:12px; font-weight:600; color:var(--graphite);
+    letter-spacing:0.01em;
+  }
+
+  /* source chooser */
+  .choice{display:grid; grid-template-columns:1fr 1fr; gap:5px;}
+  .choice.three{grid-template-columns:1fr;}
+  .chip{
+    border:1px solid var(--rule); border-radius:2px; background:#fff;
+    padding:7px 8px; text-align:left; font-size:12px; line-height:1.25;
+  }
+  .chip b{display:block; font-weight:600;}
+  .chip span{display:block; font-family:var(--mono); font-size:10px; color:var(--mute); margin-top:2px;}
+  .chip:hover{border-color:var(--graphite);}
+  .chip[aria-pressed="true"]{background:var(--ink); color:var(--paper-2); border-color:var(--ink);}
+  .chip[aria-pressed="true"] span{color:#B9B4A8;}
+
+  /* sliders */
+  .ctl{margin-bottom:13px;}
+  .ctl:last-child{margin-bottom:0;}
+  .ctl .row{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;}
+  .ctl label{font-size:12px;}
+  .ctl output{font-family:var(--mono); font-size:12px; color:var(--graphite);}
+  input[type=range]{
+    -webkit-appearance:none; appearance:none; width:100%; height:16px;
+    background:transparent; margin:0; display:block;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:1px; background:var(--rule);}
+  input[type=range]::-moz-range-track{height:1px; background:var(--rule);}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none; width:11px; height:11px; margin-top:-5px;
+    border-radius:50%; background:var(--ink); border:none;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:11px; height:11px; border-radius:50%; background:var(--ink); border:none;
+  }
+  .hint{font-size:11px; color:var(--mute); margin:5px 0 0; line-height:1.4;}
+
+  /* ---------- viewport ---------- */
+  #view{position:relative; flex:1; min-width:0; background:var(--paper);}
+  #view canvas{display:block;}
+  #nav{
+    position:absolute; left:0; right:0; bottom:9px; text-align:center;
+    font-size:11px; color:var(--mute); pointer-events:none;
+  }
+  #nav b{color:var(--graphite); font-weight:600;}
+  #legend{
+    position:absolute; left:12px; bottom:9px; font-size:11px; color:var(--graphite);
+    display:flex; flex-direction:column; gap:3px;
+  }
+  #legend div{display:flex; align-items:center; gap:6px;}
+  #legend i{width:14px; height:2px; display:block;}
+
+  /* ---------- right panel ---------- */
+  .verdict{
+    border:1px solid var(--ink); border-radius:2px; padding:10px 11px; background:#fff;
+  }
+  .verdict .cls{font-size:19px; font-weight:600; letter-spacing:-0.01em; line-height:1.15;}
+  .verdict .conf{font-family:var(--mono); font-size:12px; color:var(--graphite); margin-top:3px;}
+  .verdict.idle{border-color:var(--rule);}
+  .verdict.idle .cls{color:var(--mute); font-weight:500;}
+  .verdict.warn{border-color:var(--hot);}
+
+  .kv{display:flex; justify-content:space-between; gap:8px; padding:4px 0;
+      border-bottom:1px solid var(--rule-soft); font-size:12px;}
+  .kv:last-child{border-bottom:none;}
+  .kv span:last-child{font-family:var(--mono); color:var(--graphite);}
+
+  /* channel response profile */
+  #cChans{display:block; width:100%; height:96px; background:#fff;
+          border:1px solid var(--rule-soft);}
+
+  /* log */
+  #log{font-family:var(--mono); font-size:10.5px; color:var(--graphite);}
+  #log div{padding:3px 0; border-bottom:1px solid var(--rule-soft); white-space:nowrap;
+           overflow:hidden; text-overflow:ellipsis;}
+  #log div:last-child{border-bottom:none;}
+  #log .empty{color:var(--mute); font-family:var(--sans); font-size:11.5px; white-space:normal;}
+
+  /* ---------- bottom strip ---------- */
+  #strip{
+    height:156px; flex-shrink:0; display:flex;
+    border-top:1px solid var(--rule); background:var(--paper-2);
+  }
+  .plot{position:relative; padding:9px 14px 8px;}
+  .plot h3{
+    margin:0 0 5px; font-size:11.5px; font-weight:600; color:var(--graphite);
+    display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+  }
+  .plot h3 em{font-style:normal; font-family:var(--mono); font-size:10.5px; color:var(--mute);}
+  .plot canvas{display:block; width:100%; height:104px;}
+  #tracePlot{flex:1.55; min-width:0; border-right:1px solid var(--rule);}
+  #specPlot{flex:1; min-width:0;}
+
+  @media (max-width:1080px){
+    #right{width:250px;}
+    #left{width:224px;}
+  }
+  @media (max-width:860px){
+    body{overflow:auto;}
+    #app{height:auto;}
+    #main{flex-direction:column;}
+    #left,#right{width:100%; border:none; border-bottom:1px solid var(--rule);}
+    #view{height:56vh;}
+    #strip{flex-direction:column; height:auto;}
+    #tracePlot{border-right:none; border-bottom:1px solid var(--rule);}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <h1>DAS border sensing</h1>
+    <p>buried fibre interrogator, <span id="hdrCh">24</span> channels over 400&nbsp;m</p>
+    <div class="spacer"></div>
+    <button class="btn" id="btnTerrain">New terrain</button>
+    <button class="btn solid" id="btnPlay">Start</button>
+  </header>
+
+  <div id="main">
+
+    <!-- ============ LEFT: controls ============ -->
+    <div class="panel" id="left">
+
+      <div class="sect">
+        <h2>What is moving</h2>
+        <div class="choice" id="srcChoice"></div>
+      </div>
+
+      <div class="sect">
+        <h2>How it moves</h2>
+        <div class="choice three" id="trackChoice"></div>
+        <div class="ctl" style="margin-top:11px">
+          <div class="row"><label for="sSpeed">Speed</label><output id="oSpeed"></output></div>
+          <input type="range" id="sSpeed" min="1" max="20" step="0.5" value="6">
+        </div>
+        <div class="ctl">
+          <div class="row"><label for="sStand">Track offset</label><output id="oStand"></output></div>
+          <input type="range" id="sStand" min="10" max="180" step="5" value="45">
+        </div>
+      </div>
+
+      <div class="sect">
+        <h2>Receiver array</h2>
+        <div class="ctl">
+          <div class="row"><label for="sCh">Receivers</label><output id="oCh"></output></div>
+          <input type="range" id="sCh" min="0" max="7" step="1" value="3">
+          <p class="hint" id="chHint"></p>
+        </div>
+      </div>
+
+      <div class="sect">
+        <h2>Ground and cable</h2>
+        <div class="ctl">
+          <div class="row"><label for="sCoup">Soil coupling</label><output id="oCoup"></output></div>
+          <input type="range" id="sCoup" min="15" max="120" step="5" value="70">
+          <p class="hint">Attenuation length. Rock carries vibration far; dry sand and snow damp it quickly.</p>
+        </div>
+        <div class="ctl">
+          <div class="row"><label for="sNoise">Ambient noise</label><output id="oNoise"></output></div>
+          <input type="range" id="sNoise" min="0" max="0.5" step="0.01" value="0.03">
+          <p class="hint">Roads, rail, farm machinery and livestock share the same frequency band.</p>
+        </div>
+        <div class="ctl">
+          <div class="row"><label for="sRug">Terrain relief</label><output id="oRug"></output></div>
+          <input type="range" id="sRug" min="0" max="1" step="0.05" value="0.5">
+        </div>
+      </div>
+
+      <div class="sect">
+        <h2>How the reading is made</h2>
+        <p class="hint" style="margin:0">
+          The trace below is synthesised from the source frequency, its harmonics, distance
+          attenuation and noise, then sampled at 500&nbsp;Hz. The spectrum is a real 512-point
+          FFT of that trace. The verdict comes from the spectral peak, matched to the nearest
+          frequency band. This is a baseline method, not the trained ensemble.
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ CENTRE: 3D ============ -->
+    <div id="view">
+      <div id="legend">
+        <div><i style="background:var(--fibre)"></i> fibre cable</div>
+        <div><i style="background:var(--hot)"></i> responding channel</div>
+      </div>
+      <div id="nav"><b>Drag</b> to rotate &nbsp; <b>Right-drag</b> to pan &nbsp; <b>Scroll</b> to zoom</div>
+    </div>
+
+    <!-- ============ RIGHT: readout ============ -->
+    <div class="panel" id="right">
+
+      <div class="sect">
+        <h2>Verdict</h2>
+        <div class="verdict idle" id="verdict">
+          <div class="cls" id="vCls">Nothing detected</div>
+          <div class="conf" id="vConf">press Start</div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="kv"><span>Spectral peak</span><span id="mPeak">&mdash;</span></div>
+          <div class="kv"><span>Standoff</span><span id="mDist">&mdash;</span></div>
+          <div class="kv"><span>Heading</span><span id="mHead">&mdash;</span></div>
+          <div class="kv"><span>Strongest channel</span><span id="mCh">&mdash;</span></div>
+          <div class="kv"><span>Signal to noise</span><span id="mSnr">&mdash;</span></div>
+          <div class="kv"><span>Channel spacing</span><span id="mSpace">&mdash;</span></div>
+          <div class="kv"><span>Position error</span><span id="mErr">&mdash;</span></div>
+        </div>
+      </div>
+
+      <div class="sect">
+        <h2>Channel response</h2>
+        <canvas id="cChans"></canvas>
+        <p class="hint">One event is seen by many channels at once. The shape of this
+          profile is what fixes its position along the line, and the dashed line is
+          the position the array estimates from it.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Detections</h2>
+        <div id="log"><div class="empty">Nothing logged yet. A detection is recorded when
+          the verdict settles on one class.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ BOTTOM: seismic strip ============ -->
+  <div id="strip">
+    <div class="plot" id="tracePlot">
+      <h3>Strongest channel trace <em id="traceMeta">500 Hz &middot; 1.0 s window</em></h3>
+      <canvas id="cTrace"></canvas>
+    </div>
+    <div class="plot" id="specPlot">
+      <h3>Spectrum <em id="specMeta">512-point FFT</em></h3>
+      <canvas id="cSpec"></canvas>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+"use strict";
+
+/* =======================================================================
+   1. MODEL CONSTANTS
+   ======================================================================= */
+const SPAN      = 400;      // metres of border modelled, cable runs along X
+const CH_OPTIONS = [8, 12, 16, 24, 32, 48, 64, 96];   // selectable receiver counts
+const FS         = 500;     // virtual sample rate, Hz  (Nyquist 250 Hz)
+const NFFT       = 512;     // FFT window
+const TRACE_LEN  = 512;     // samples held for display
+
+const SOURCES = [
+  { key:'vehicle', name:'Heavy vehicle', band:[30,45],  amp:1.00, note:'30-45 Hz' },
+  { key:'person',  name:'Person',        band:[10,20],  amp:0.55, note:'10-20 Hz' },
+  { key:'animal',  name:'Animal',        band:[5,15],   amp:0.34, note:'5-15 Hz'  },
+  { key:'aerial',  name:'Aerial',        band:[50,100], amp:0.82, note:'50-100 Hz'}
+];
+const TRACKS = [
+  { key:'cross',  name:'Crossing the line' },
+  { key:'along',  name:'Along the line' },
+  { key:'away',   name:'Moving away' }
+];
+
+const state = {
+  src:      SOURCES[0],
+  nCh:      24,
+  track:    TRACKS[0],
+  speed:    6,
+  standoff: 45,
+  coupling: 70,
+  noise:    0.03,
+  relief:   0.5,
+  running:  false,
+  seed:     Math.random()*1000
+};
+
+/* =======================================================================
+   2. VALUE NOISE TERRAIN
+   ======================================================================= */
+function hash2(x, y, seed){
+  let h = Math.sin(x*127.1 + y*311.7 + seed*74.7) * 43758.5453123;
+  return h - Math.floor(h);
+}
+function vnoise(x, y, seed){
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const xf = x - xi,        yf = y - yi;
+  const u = xf*xf*(3-2*xf), v = yf*yf*(3-2*yf);
+  const a = hash2(xi,   yi,   seed), b = hash2(xi+1, yi,   seed);
+  const c = hash2(xi,   yi+1, seed), d = hash2(xi+1, yi+1, seed);
+  return (a*(1-u)+b*u)*(1-v) + (c*(1-u)+d*u)*v;
+}
+function fbm(x, y, seed){
+  let sum = 0, amp = 0.5, freq = 1;
+  for (let o = 0; o < 5; o++){
+    sum  += amp * vnoise(x*freq, y*freq, seed + o*31.4);
+    freq *= 2.03;
+    amp  *= 0.5;
+  }
+  return sum;
+}
+// height in metres at world (x, z)
+function terrainH(x, z){
+  const s = 1/95;
+  let h = fbm(x*s, z*s, state.seed);
+  h = Math.pow(h, 1.25);
+  // flatten a corridor either side of the cable so it reads as a border strip
+  const corridor = Math.exp(-(z*z) / (2*38*38));
+  h *= (1 - 0.62*corridor);
+  return h * (10 + 52 * state.relief);
+}
+
+/* =======================================================================
+   3. THREE.JS SCENE
+   ======================================================================= */
+const view = document.getElementById('view');
+const PAPER = 0xEDEAE3;
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(PAPER, 1);
+view.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(PAPER, 340, 760);
+
+const camera = new THREE.PerspectiveCamera(42, 1, 1, 3000);
+
+scene.add(new THREE.HemisphereLight(0xF2EFE6, 0x6C6A5C, 0.85));
+const sun = new THREE.DirectionalLight(0xFFF6E2, 0.75);
+sun.position.set(-160, 240, 140);
+scene.add(sun);
+const rim = new THREE.DirectionalLight(0xBFC9CF, 0.28);
+rim.position.set(180, 90, -170);
+scene.add(rim);
+
+/* ---- terrain mesh ---- */
+const SEG = 112;
+const terrGeo = new THREE.PlaneGeometry(SPAN, SPAN, SEG, SEG);
+terrGeo.rotateX(-Math.PI/2);
+terrGeo.setAttribute('color',
+  new THREE.BufferAttribute(new Float32Array(terrGeo.attributes.position.count*3), 3));
+
+const terrMat = new THREE.MeshStandardMaterial({
+  vertexColors:true, flatShading:true, roughness:0.94, metalness:0.0
+});
+const terrain = new THREE.Mesh(terrGeo, terrMat);
+scene.add(terrain);
+
+// geological ramp: pale silt -> olive scrub -> dry rock
+const RAMP = [
+  { t:0.00, c:new THREE.Color(0xD9D1BC) },
+  { t:0.28, c:new THREE.Color(0xA8AE86) },
+  { t:0.58, c:new THREE.Color(0x8A9268) },
+  { t:0.82, c:new THREE.Color(0x7C7360) },
+  { t:1.00, c:new THREE.Color(0x8E8577) }
+];
+const _c1 = new THREE.Color(), _c2 = new THREE.Color();
+function rampColor(t, out){
+  t = Math.max(0, Math.min(1, t));
+  for (let i = 0; i < RAMP.length-1; i++){
+    if (t <= RAMP[i+1].t){
+      const f = (t - RAMP[i].t) / (RAMP[i+1].t - RAMP[i].t || 1);
+      return out.copy(RAMP[i].c).lerp(RAMP[i+1].c, f);
+    }
+  }
+  return out.copy(RAMP[RAMP.length-1].c);
+}
+
+function buildTerrain(){
+  const pos = terrGeo.attributes.position;
+  const col = terrGeo.attributes.color;
+  let maxH = 0.0001;
+  const hs = new Float32Array(pos.count);
+  for (let i = 0; i < pos.count; i++){
+    const h = terrainH(pos.getX(i), pos.getZ(i));
+    hs[i] = h;
+    if (h > maxH) maxH = h;
+  }
+  for (let i = 0; i < pos.count; i++){
+    pos.setY(i, hs[i]);
+    rampColor(hs[i]/maxH, _c1);
+    col.setXYZ(i, _c1.r, _c1.g, _c1.b);
+  }
+  pos.needsUpdate = true;
+  col.needsUpdate = true;
+  terrGeo.computeVertexNormals();
+}
+
+/* ---- border line: dashed markers straddling the cable ---- */
+const borderGroup = new THREE.Group();
+scene.add(borderGroup);
+function buildBorder(){
+  borderGroup.clear();
+  const mat = new THREE.MeshBasicMaterial({ color:0xB3312A });
+  for (let x = -SPAN/2 + 6; x < SPAN/2; x += 22){
+    const g = new THREE.PlaneGeometry(11, 1.6);
+    g.rotateX(-Math.PI/2);
+    const m = new THREE.Mesh(g, mat);
+    m.position.set(x + 5.5, terrainH(x + 5.5, 0) + 0.45, 0);
+    borderGroup.add(m);
+  }
+}
+
+/* ---- fibre cable + channels ---- */
+const cableGroup = new THREE.Group();
+scene.add(cableGroup);
+const channels = [];   // { mesh, x, z, resp }
+
+const chGeo = new THREE.SphereGeometry(1, 12, 9);
+function buildCable(){
+  cableGroup.clear();
+  channels.length = 0;
+
+  const pts = [];
+  for (let i = 0; i <= 80; i++){
+    const x = -SPAN/2 + (SPAN * i/80);
+    pts.push(new THREE.Vector3(x, terrainH(x, 0) + 1.0, 0));
+  }
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const tube  = new THREE.Mesh(
+    new THREE.TubeGeometry(curve, 200, 0.85, 8, false),
+    new THREE.MeshStandardMaterial({ color:0x0F6F5C, roughness:0.5, metalness:0.15 })
+  );
+  cableGroup.add(tube);
+
+  // marker radius tracks spacing so a dense array does not turn into one blob
+  const spacing = SPAN / state.nCh;
+  const rad = Math.max(0.7, Math.min(3.0, spacing * 0.26));
+
+  for (let i = 0; i < state.nCh; i++){
+    const x = -SPAN/2 + SPAN*(i + 0.5)/state.nCh;
+    const y = terrainH(x, 0) + 1.0;
+    const m = new THREE.Mesh(chGeo, new THREE.MeshStandardMaterial({
+      color:0x0F6F5C, roughness:0.45, emissive:0x000000
+    }));
+    m.position.set(x, y, 0);
+    m.scale.setScalar(rad);
+    cableGroup.add(m);
+    channels.push({ mesh:m, x:x, z:0, y:y, resp:0, base:rad });
+  }
+}
+
+/* ---- source object ---- */
+const srcGroup = new THREE.Group();
+scene.add(srcGroup);
+let srcMesh = null, rotor = null;
+
+function buildSource(){
+  srcGroup.clear();
+  rotor = null;
+  const mat = new THREE.MeshStandardMaterial({ color:0x2B2E31, roughness:0.6, flatShading:true });
+
+  if (state.src.key === 'vehicle'){
+    const g = new THREE.Group();
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(9, 3.2, 5.4), mat);
+    hull.position.y = 2.4;
+    const turret = new THREE.Mesh(new THREE.BoxGeometry(4.6, 2.2, 3.6), mat);
+    turret.position.set(-0.6, 5.0, 0);
+    g.add(hull, turret);
+    srcMesh = g;
+  } else if (state.src.key === 'person'){
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 3.4, 10), mat);
+    body.position.y = 2.6;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.78, 12, 9), mat);
+    head.position.y = 4.8;
+    g.add(body, head);
+    srcMesh = g;
+  } else if (state.src.key === 'animal'){
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.SphereGeometry(1.9, 14, 10), mat);
+    body.scale.set(1.6, 0.95, 0.95);
+    body.position.y = 2.3;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 9), mat);
+    head.position.set(-3.0, 3.4, 0);
+    g.add(body, head);
+    srcMesh = g;
+  } else {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.SphereGeometry(2.4, 14, 10), mat);
+    body.scale.set(1.7, 0.9, 0.9);
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.6, 0.6), mat);
+    tail.position.x = 4.4;
+    rotor = new THREE.Mesh(new THREE.BoxGeometry(13, 0.28, 1.0), mat);
+    rotor.position.y = 2.5;
+    g.add(body, tail, rotor);
+    g.position.y = 26;
+    srcMesh = g;
+  }
+  srcGroup.add(srcMesh);
+}
+
+/* ---- wavefront rings ---- */
+const RING_POOL = 7;
+const rings = [];
+{
+  const g = new THREE.RingGeometry(1, 1.5, 64);
+  g.rotateX(-Math.PI/2);
+  for (let i = 0; i < RING_POOL; i++){
+    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({
+      color:0xB3312A, transparent:true, opacity:0, side:THREE.DoubleSide
+    }));
+    m.visible = false;
+    scene.add(m);
+    rings.push({ mesh:m, r:0, alive:false });
+  }
+}
+let ringTimer = 0;
+function emitRing(x, z, y){
+  const r = rings.find(r => !r.alive);
+  if (!r) return;
+  r.alive = true; r.r = 2;
+  r.mesh.visible = true;
+  r.mesh.position.set(x, y + 0.7, z);
+  r.mesh.scale.set(1,1,1);
+}
+function updateRings(dt){
+  const reach = state.coupling * 1.9;
+  for (const r of rings){
+    if (!r.alive) continue;
+    r.r += dt * 78;
+    const f = r.r / reach;
+    if (f >= 1){ r.alive = false; r.mesh.visible = false; continue; }
+    r.mesh.scale.set(r.r, r.r, r.r);
+    r.mesh.material.opacity = 0.34 * (1 - f) * (1 - f);
+  }
+}
+
+/* =======================================================================
+   4. ORBIT CONTROLS (hand-rolled: OrbitControls is not in the min build)
+   ======================================================================= */
+const cam = { az: -0.72, pol: 0.99, rad: 470, target:new THREE.Vector3(0, 12, 0) };
+function applyCam(){
+  cam.pol = Math.max(0.16, Math.min(1.52, cam.pol));
+  cam.rad = Math.max(140, Math.min(1100, cam.rad));
+  camera.position.set(
+    cam.target.x + cam.rad * Math.sin(cam.pol) * Math.cos(cam.az),
+    cam.target.y + cam.rad * Math.cos(cam.pol),
+    cam.target.z + cam.rad * Math.sin(cam.pol) * Math.sin(cam.az)
+  );
+  camera.lookAt(cam.target);
+}
+(function bindControls(){
+  const el = renderer.domElement;
+  let mode = 0, px = 0, py = 0;
+  el.addEventListener('contextmenu', e => e.preventDefault());
+  el.addEventListener('pointerdown', e => {
+    mode = (e.button === 2 || e.shiftKey) ? 2 : 1;
+    px = e.clientX; py = e.clientY;
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove', e => {
+    if (!mode) return;
+    const dx = e.clientX - px, dy = e.clientY - py;
+    px = e.clientX; py = e.clientY;
+    if (mode === 1){
+      cam.az -= dx * 0.005;
+      cam.pol -= dy * 0.005;
+    } else {
+      const k = cam.rad * 0.0016;
+      const right = new THREE.Vector3(-Math.sin(cam.az), 0, Math.cos(cam.az));
+      const fwd   = new THREE.Vector3(-Math.cos(cam.az), 0, -Math.sin(cam.az));
+      cam.target.addScaledVector(right, -dx * k);
+      cam.target.addScaledVector(fwd,    dy * k);
+    }
+    applyCam();
+  });
+  const end = e => { mode = 0; try{ el.releasePointerCapture(e.pointerId); }catch(_){} };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+  el.addEventListener('wheel', e => {
+    e.preventDefault();
+    cam.rad *= (1 + Math.sign(e.deltaY) * 0.085);
+    applyCam();
+  }, { passive:false });
+
+  // pinch
+  let pinch = 0;
+  el.addEventListener('touchstart', e => {
+    if (e.touches.length === 2){
+      pinch = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
+                         e.touches[0].clientY - e.touches[1].clientY);
+    }
+  }, { passive:true });
+  el.addEventListener('touchmove', e => {
+    if (e.touches.length === 2 && pinch){
+      const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
+                           e.touches[0].clientY - e.touches[1].clientY);
+      cam.rad *= pinch / (d || 1);
+      pinch = d;
+      applyCam();
+    }
+  }, { passive:true });
+})();
+
+function resize(){
+  const w = view.clientWidth, h = view.clientHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+
+/* =======================================================================
+   5. SIGNAL SYNTHESIS + FFT
+   ======================================================================= */
+const trace = new Float32Array(TRACE_LEN);   // ring buffer
+let traceW = 0;
+let phase = 0;                                // radians, fundamental
+let noiseRms = 0.001, sigRms = 0.001;
+
+// Box-Muller Gaussian
+let gCache = null;
+function gauss(){
+  if (gCache !== null){ const v = gCache; gCache = null; return v; }
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  const r = Math.sqrt(-2*Math.log(u));
+  gCache = r * Math.sin(2*Math.PI*v);
+  return r * Math.cos(2*Math.PI*v);
+}
+
+const obj = { x:0, z:120, prevDist:0, heading:'' };
+
+function centreFreq(){
+  const b = state.src.band;
+  return (b[0] + b[1]) / 2;
+}
+
+// distance from source to a channel, in the ground plane
+function distTo(ch){
+  const dx = obj.x - ch.x, dz = obj.z - ch.z;
+  return Math.sqrt(dx*dx + dz*dz);
+}
+
+function updateChannels(){
+  const L = state.coupling;
+  let best = 0, bestI = 0;
+  for (let i = 0; i < state.nCh; i++){
+    const ch = channels[i];
+    const d  = distTo(ch);
+    const a  = state.src.amp / (1 + (d*d) / (L*L));   // geometric + soil damping
+    ch.resp  = a;
+    if (a > best){ best = a; bestI = i; }
+  }
+  return { bestI, best };
+}
+
+/* Position along the line, estimated from the response profile alone.
+
+   Centroid of the main lobe only: channels reading above 0.6 of the peak,
+   weighted by amplitude squared. Restricting to the lobe removes the pull of
+   the broad tails, and averaging over the channels inside it beats down the
+   measurement noise roughly as one over root n. So a denser array locates the
+   source more precisely, and a weak or noisy signal locates it less
+   precisely. Every channel reading carries its own noise.                  */
+const LOBE = 0.6;
+let estX = NaN, errEma = NaN;
+
+function estimatePosition(){
+  let peak = 0;
+  const meas = new Array(state.nCh);
+  for (let i = 0; i < state.nCh; i++){
+    const m = Math.max(0, channels[i].resp + gauss() * state.noise);
+    meas[i] = m;
+    if (m > peak) peak = m;
+  }
+  if (peak <= 0) return NaN;
+
+  const th = peak * LOBE;
+  let num = 0, den = 0, used = 0, bi = 0;
+  for (let i = 0; i < state.nCh; i++){
+    if (meas[i] > meas[bi]) bi = i;
+    if (meas[i] >= th){
+      const wt = meas[i] * meas[i];
+      num += wt * channels[i].x;
+      den += wt;
+      used++;
+    }
+  }
+  if (used < 2 || den <= 0) return channels[bi].x;   // lobe narrower than one channel
+  return num / den;
+}
+
+// push n samples of the strongest-channel signal
+function synth(n, amp){
+  const f  = centreFreq();
+  const dw = 2*Math.PI*f / FS;
+  let sAcc = 0, nAcc = 0;
+  for (let k = 0; k < n; k++){
+    phase += dw;
+    if (phase > 1e6) phase -= 1e6;
+    // fundamental + two harmonics, as in the project's forward model
+    let s = Math.sin(phase)
+          + 0.30 * Math.sin(phase*1.5)
+          + 0.20 * Math.sin(phase*2.0);
+    s *= amp;
+    const nz = gauss() * state.noise;
+    sAcc += s*s; nAcc += nz*nz;
+    trace[traceW] = s + nz;
+    traceW = (traceW + 1) % TRACE_LEN;
+  }
+  if (n > 0){
+    const a = 0.12;
+    sigRms   = (1-a)*sigRms   + a*Math.sqrt(sAcc/n);
+    noiseRms = (1-a)*noiseRms + a*Math.sqrt(nAcc/n + 1e-9);
+  }
+}
+
+/* ---- radix-2 FFT ---- */
+const fre = new Float32Array(NFFT), fim = new Float32Array(NFFT);
+const mag = new Float32Array(NFFT/2);
+const hann = new Float32Array(NFFT);
+for (let i = 0; i < NFFT; i++) hann[i] = 0.5 - 0.5*Math.cos(2*Math.PI*i/(NFFT-1));
+
+function fft(){
+  for (let i = 0; i < NFFT; i++){
+    fre[i] = trace[(traceW + i) % TRACE_LEN] * hann[i];
+    fim[i] = 0;
+  }
+  // bit reversal
+  for (let i = 1, j = 0; i < NFFT; i++){
+    let bit = NFFT >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j){
+      let t = fre[i]; fre[i] = fre[j]; fre[j] = t;
+      t = fim[i]; fim[i] = fim[j]; fim[j] = t;
+    }
+  }
+  for (let len = 2; len <= NFFT; len <<= 1){
+    const ang = -2*Math.PI/len;
+    const wr = Math.cos(ang), wi = Math.sin(ang);
+    for (let i = 0; i < NFFT; i += len){
+      let cr = 1, ci = 0;
+      for (let k = 0; k < len/2; k++){
+        const ur = fre[i+k],        ui = fim[i+k];
+        const vr = fre[i+k+len/2]*cr - fim[i+k+len/2]*ci;
+        const vi = fre[i+k+len/2]*ci + fim[i+k+len/2]*cr;
+        fre[i+k] = ur+vr;  fim[i+k] = ui+vi;
+        fre[i+k+len/2] = ur-vr; fim[i+k+len/2] = ui-vi;
+        const ncr = cr*wr - ci*wi;
+        ci = cr*wi + ci*wr; cr = ncr;
+      }
+    }
+  }
+  let m = 1e-9;
+  for (let i = 0; i < NFFT/2; i++){
+    mag[i] = Math.sqrt(fre[i]*fre[i] + fim[i]*fim[i]);
+    if (mag[i] > m) m = mag[i];
+  }
+  return m;
+}
+
+/* ---- baseline classifier ----
+   Nearest band centre, with an explicit ambiguity test. The animal and person
+   bands genuinely overlap between 10 and 15 Hz, so a peak landing in that
+   region is reported as ambiguous rather than forced into one class. That is
+   the real discrimination problem this project exists to solve.            */
+function bandCentre(s){ return (s.band[0] + s.band[1]) / 2; }
+
+function classify(peakHz, snr){
+  if (snr < 2.2) return { label:'Nothing detected', conf:0, state:'idle',
+                          detail:'no signal above the noise floor' };
+
+  const ranked = SOURCES
+    .map(s => ({ s, d:Math.abs(peakHz - bandCentre(s)) }))
+    .sort((a, b) => a.d - b.d);
+  const first = ranked[0], second = ranked[1];
+
+  // peak sitting well outside every band edge
+  const edgeGap = Math.min(Math.abs(peakHz - first.s.band[0]),
+                           Math.abs(peakHz - first.s.band[1]));
+  const outside = peakHz < first.s.band[0] || peakHz > first.s.band[1];
+  if (outside && edgeGap > 10){
+    return { label:'Unrecognised pattern', conf:0.25, state:'warn',
+             detail:'closest match: ' + first.s.name.toLowerCase() };
+  }
+
+  // how decisively the nearest centre wins
+  const sep = (second.d - first.d) / (second.d + first.d + 1e-6);
+  if (sep < 0.14){
+    return { label:'Ambiguous', conf:0.40, state:'warn',
+             detail:first.s.name.toLowerCase() + ' or ' + second.s.name.toLowerCase() };
+  }
+
+  const snrTerm = Math.min(1, (snr - 2.2) / 12);
+  const conf = 0.55 + 0.44 * (0.58*Math.min(1, sep) + 0.42*snrTerm);
+  return { label:first.s.name, conf:Math.min(0.99, conf), state:'ok', detail:'' };
+}
+
+/* =======================================================================
+   6. UI WIRING
+   ======================================================================= */
+const $ = id => document.getElementById(id);
+
+// source chips
+const srcChoice = $('srcChoice');
+SOURCES.forEach(s => {
+  const b = document.createElement('button');
+  b.className = 'chip';
+  b.type = 'button';
+  b.innerHTML = '<b>' + s.name + '</b><span>' + s.note + '</span>';
+  b.setAttribute('aria-pressed', String(s === state.src));
+  b.addEventListener('click', () => {
+    state.src = s;
+    [...srcChoice.children].forEach((c,i) =>
+      c.setAttribute('aria-pressed', String(SOURCES[i] === state.src)));
+    buildSource();
+    resetTrack();
+  });
+  srcChoice.appendChild(b);
+});
+
+// track chips
+const trackChoice = $('trackChoice');
+TRACKS.forEach(t => {
+  const b = document.createElement('button');
+  b.className = 'chip';
+  b.type = 'button';
+  b.innerHTML = '<b>' + t.name + '</b>';
+  b.setAttribute('aria-pressed', String(t === state.track));
+  b.addEventListener('click', () => {
+    state.track = t;
+    [...trackChoice.children].forEach((c,i) =>
+      c.setAttribute('aria-pressed', String(TRACKS[i] === state.track)));
+    resetTrack();
+  });
+  trackChoice.appendChild(b);
+});
+
+// sliders
+function slider(id, outId, fmt, key, after){
+  const el = $(id), out = $(outId);
+  const sync = () => {
+    state[key] = parseFloat(el.value);
+    out.textContent = fmt(state[key]);
+    if (after) after();
+  };
+  el.addEventListener('input', sync);
+  sync();
+}
+slider('sSpeed','oSpeed', v => v.toFixed(1) + ' m/s', 'speed');
+slider('sStand','oStand', v => v.toFixed(0) + ' m',   'standoff', resetTrack);
+slider('sCoup', 'oCoup',  v => v.toFixed(0) + ' m',   'coupling');
+slider('sNoise','oNoise', v => v.toFixed(2),          'noise');
+slider('sRug',  'oRug',   v => v.toFixed(2),          'relief', rebuildWorld);
+
+// receiver count: index into CH_OPTIONS
+const sCh = $('sCh'), oCh = $('oCh'), chHint = $('chHint');
+sCh.max = String(CH_OPTIONS.length - 1);
+sCh.value = String(CH_OPTIONS.indexOf(state.nCh));
+function syncCh(){
+  state.nCh = CH_OPTIONS[parseInt(sCh.value, 10)];
+  const spacing = SPAN / state.nCh;
+  oCh.textContent = state.nCh;
+  $('hdrCh').textContent = state.nCh;
+  chHint.textContent = 'One channel every ' + spacing.toFixed(1) +
+    ' m. A denser array pins the position down better, because the estimate is '
+    + 'averaged over more channels, but it also costs more data to carry and '
+    + 'process. Watch the position error as you change this.';
+  buildCable();
+}
+sCh.addEventListener('input', syncCh);
+syncCh();
+
+// buttons
+$('btnPlay').addEventListener('click', () => {
+  state.running = !state.running;
+  $('btnPlay').textContent = state.running ? 'Pause' : 'Start';
+  if (state.running && obj.done) resetTrack();
+});
+$('btnTerrain').addEventListener('click', () => {
+  state.seed = Math.random()*1000;
+  rebuildWorld();
+});
+
+/* ---- track handling ---- */
+function resetTrack(){
+  obj.done = false;
+  if (state.track.key === 'cross'){
+    obj.x = 0;  obj.z = state.standoff;
+  } else if (state.track.key === 'along'){
+    obj.x = -SPAN/2 + 15; obj.z = state.standoff;
+  } else {
+    obj.x = 0;  obj.z = 12;
+  }
+  obj.prevDist = 0;
+  for (const r of rings){ r.alive = false; r.mesh.visible = false; }
+}
+
+function stepTrack(dt){
+  const v = state.speed * dt;
+  if (state.track.key === 'cross'){
+    obj.z -= v;
+    if (obj.z < -state.standoff){ obj.z = -state.standoff; obj.done = true; }
+  } else if (state.track.key === 'along'){
+    obj.x += v;
+    if (obj.x > SPAN/2 - 15){ obj.x = SPAN/2 - 15; obj.done = true; }
+  } else {
+    obj.z += v;
+    if (obj.z > 200){ obj.z = 200; obj.done = true; }
+  }
+}
+
+function rebuildWorld(){
+  buildTerrain();
+  buildBorder();
+  buildCable();
+  applyCam();
+}
+
+/* =======================================================================
+   7. 2D PLOTS
+   ======================================================================= */
+function fitCanvas(c){
+  const r = Math.min(window.devicePixelRatio, 2);
+  const w = c.clientWidth, h = c.clientHeight;
+  if (!w || !h) return null;
+  if (c.width !== w*r || c.height !== h*r){ c.width = w*r; c.height = h*r; }
+  const ctx = c.getContext('2d');
+  ctx.setTransform(r, 0, 0, r, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  return { ctx, w, h };
+}
+
+// variable-area wiggle display, as used on seismic sections
+function drawTrace(){
+  const f = fitCanvas($('cTrace'));
+  if (!f) return;
+  const { ctx, w, h } = f;
+  const mid = h/2;
+
+  ctx.strokeStyle = '#E2DDD2';
+  ctx.lineWidth = 1;
+  for (let k = 1; k < 5; k++){
+    const y = h*k/5;
+    ctx.beginPath(); ctx.moveTo(0, y+0.5); ctx.lineTo(w, y+0.5); ctx.stroke();
+  }
+  ctx.strokeStyle = '#CFC9BC';
+  ctx.beginPath(); ctx.moveTo(0, mid+0.5); ctx.lineTo(w, mid+0.5); ctx.stroke();
+
+  // auto-scale on the window, with a floor so noise does not fill the frame
+  let peak = 0.12;
+  for (let i = 0; i < TRACE_LEN; i++) peak = Math.max(peak, Math.abs(trace[i]));
+  const sc = (mid - 5) / peak;
+
+  const xs = i => w * i / (TRACE_LEN - 1);
+  const ys = i => mid - trace[(traceW + i) % TRACE_LEN] * sc;
+
+  // positive lobes filled red, negative filled blue: seismic polarity convention
+  ctx.beginPath();
+  ctx.moveTo(0, mid);
+  for (let i = 0; i < TRACE_LEN; i++) ctx.lineTo(xs(i), Math.min(ys(i), mid));
+  ctx.lineTo(w, mid); ctx.closePath();
+  ctx.fillStyle = 'rgba(179,49,42,0.30)'; ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(0, mid);
+  for (let i = 0; i < TRACE_LEN; i++) ctx.lineTo(xs(i), Math.max(ys(i), mid));
+  ctx.lineTo(w, mid); ctx.closePath();
+  ctx.fillStyle = 'rgba(31,95,168,0.22)'; ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(xs(0), ys(0));
+  for (let i = 1; i < TRACE_LEN; i++) ctx.lineTo(xs(i), ys(i));
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+}
+
+function drawSpec(peakMax, peakHz){
+  const f = fitCanvas($('cSpec'));
+  if (!f) return;
+  const { ctx, w, h } = f;
+  const FMAX = 120;                       // display band
+  const bins = Math.floor(FMAX * NFFT / FS);
+  const xOf = hz => w * hz / FMAX;
+
+  // class bands as pale ground, labelled
+  const shades = ['rgba(31,95,168,0.07)','rgba(31,95,168,0.11)',
+                  'rgba(179,49,42,0.07)','rgba(179,49,42,0.11)'];
+  SOURCES.forEach((s, i) => {
+    ctx.fillStyle = shades[i];
+    ctx.fillRect(xOf(s.band[0]), 0, xOf(s.band[1]) - xOf(s.band[0]), h);
+  });
+
+  ctx.strokeStyle = '#E2DDD2'; ctx.lineWidth = 1;
+  for (let hz = 20; hz < FMAX; hz += 20){
+    ctx.beginPath(); ctx.moveTo(xOf(hz)+0.5, 0); ctx.lineTo(xOf(hz)+0.5, h-13); ctx.stroke();
+  }
+
+  // spectrum
+  const base = h - 13;
+  ctx.beginPath();
+  ctx.moveTo(0, base);
+  for (let i = 1; i <= bins; i++){
+    const hz = i * FS / NFFT;
+    const v = mag[i] / peakMax;
+    ctx.lineTo(xOf(hz), base - v * (base - 4));
+  }
+  ctx.lineTo(xOf(FMAX), base);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(15,111,92,0.20)'; ctx.fill();
+  ctx.strokeStyle = '#0F6F5C'; ctx.lineWidth = 1.2; ctx.stroke();
+
+  // peak marker
+  if (peakHz > 0 && peakHz < FMAX){
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+    ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(xOf(peakHz)+0.5, 0); ctx.lineTo(xOf(peakHz)+0.5, base); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  ctx.fillStyle = '#7C8085';
+  ctx.font = '9px ui-monospace, Menlo, Consolas, monospace';
+  for (let hz = 0; hz <= FMAX; hz += 20){
+    ctx.textAlign = hz === 0 ? 'left' : (hz === FMAX ? 'right' : 'center');
+    ctx.fillText(hz + (hz === FMAX ? ' Hz' : ''), Math.min(w-1, Math.max(1, xOf(hz))), h - 3);
+  }
+}
+
+/* =======================================================================
+   8. READOUT
+   ======================================================================= */
+const logEl = $('log');
+let lastLogged = '', logCount = 0, settleFrames = 0;
+
+function pushLog(cls, conf, dist, ch){
+  const t = new Date().toLocaleTimeString('en-GB', { hour12:false });
+  if (logCount === 0) logEl.innerHTML = '';
+  const d = document.createElement('div');
+  d.textContent = t + '  ' + cls.toLowerCase().padEnd(14).slice(0,14) +
+                  ' ' + dist.toFixed(0).padStart(3) + ' m  ' +
+                  'CH' + String(ch+1).padStart(2,'0') + '  ' +
+                  Math.round(conf*100) + '%';
+  logEl.prepend(d);
+  while (logEl.children.length > 7) logEl.lastChild.remove();
+  logCount++;
+}
+
+function updateReadout(verdict, peakHz, dist, bestI, snr){
+  const v = $('verdict');
+  v.className = 'verdict' + (verdict.state === 'ok' ? '' :
+                verdict.state === 'warn' ? ' warn' : ' idle');
+  $('vCls').textContent = verdict.label;
+  $('vConf').textContent = verdict.state === 'idle'
+    ? verdict.detail
+    : (verdict.detail ? verdict.detail + ' \u00b7 ' : '') +
+      'confidence ' + Math.round(verdict.conf*100) + '%';
+
+  $('mPeak').textContent = snr < 2.2 ? '\u2014' : peakHz.toFixed(1) + ' Hz';
+  $('mDist').textContent = dist.toFixed(0) + ' m';
+  $('mHead').textContent = obj.heading || '\u2014';
+  $('mCh').textContent  = 'CH' + String(bestI+1).padStart(2,'0');
+  $('mSnr').textContent = snr < 0.05 ? '\u2014' : snr.toFixed(1) + '\u00d7';
+
+  $('mSpace').textContent = (SPAN / state.nCh).toFixed(1) + ' m \u00d7 ' + state.nCh;
+  $('mErr').textContent = (snr < 2.2 || !isFinite(errEma))
+    ? '\u2014' : '\u00b1' + errEma.toFixed(1) + ' m';
+  drawChans();
+}
+
+// response profile along the cable, scales to any receiver count
+function drawChans(){
+  const f = fitCanvas($('cChans'));
+  if (!f) return;
+  const { ctx, w, h } = f;
+  const base = h - 12;
+  const n = state.nCh;
+
+  ctx.strokeStyle = '#E2DDD2'; ctx.lineWidth = 1;
+  for (let k = 1; k < 4; k++){
+    const y = base * k / 4;
+    ctx.beginPath(); ctx.moveTo(0, y+0.5); ctx.lineTo(w, y+0.5); ctx.stroke();
+  }
+
+  const slot = w / n;
+  const bw = Math.max(1.2, slot - Math.max(1, slot * 0.22));
+  for (let i = 0; i < n; i++){
+    const t  = Math.min(1, channels[i].resp / state.src.amp);
+    const x  = w * (i + 0.5) / n;
+    const bh = t * (base - 3);
+    ctx.fillStyle = t > 0.55 ? '#B3312A' : t > 0.22 ? '#C8871F' : '#1F5FA8';
+    ctx.fillRect(x - bw/2, base - bh, bw, Math.max(0.6, bh));
+  }
+
+  ctx.strokeStyle = '#CFC9BC';
+  ctx.beginPath(); ctx.moveTo(0, base+0.5); ctx.lineTo(w, base+0.5); ctx.stroke();
+
+  if (isFinite(estX)){
+    const px = w * (estX + SPAN/2) / SPAN;
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(px+0.5, 0); ctx.lineTo(px+0.5, base); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  ctx.fillStyle = '#7C8085';
+  ctx.font = '9px ui-monospace, Menlo, Consolas, monospace';
+  ctx.textAlign = 'left';   ctx.fillText('CH01', 1, h - 2);
+  ctx.textAlign = 'center'; ctx.fillText('along the line', w/2, h - 2);
+  ctx.textAlign = 'right';  ctx.fillText('CH' + state.nCh, w - 1, h - 2);
+}
+
+/* =======================================================================
+   9. LOOP
+   ======================================================================= */
+let last = performance.now(), fftTick = 0, peakMax = 1, peakHz = 0;
+
+function frame(now){
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+
+  if (state.running && !obj.done) stepTrack(dt);
+
+  // place the source on the terrain
+  const gy = terrainH(obj.x, obj.z);
+  srcGroup.position.set(obj.x, gy, obj.z);
+  srcGroup.rotation.y = (state.track.key === 'along') ? 0 : Math.PI/2;
+  if (rotor) rotor.rotation.y += dt * 26;
+
+  const { bestI, best } = updateChannels();
+  const dist = Math.abs(obj.z);
+
+  // heading, from how the standoff is changing
+  if (obj.prevDist){
+    const d = dist - obj.prevDist;
+    obj.heading = Math.abs(d) < 0.02 ? 'along the line'
+                : d < 0 ? 'closing' : 'receding';
+  }
+  obj.prevDist = dist;
+
+  // channel glow
+  for (let i = 0; i < state.nCh; i++){
+    const ch = channels[i];
+    const t = Math.min(1, ch.resp / state.src.amp);
+    ch.mesh.material.emissive.setRGB(t*0.78, t*0.50, t*0.06);
+    ch.mesh.scale.setScalar(ch.base * (1 + t*1.5));
+  }
+
+  if (state.running && !obj.done){
+    synth(Math.max(1, Math.round(dt * FS)), best);
+    ringTimer += dt;
+    const period = 1 / Math.max(1, centreFreq() / 12);
+    if (ringTimer > period){ ringTimer = 0; emitRing(obj.x, obj.z, gy); }
+  } else {
+    synth(Math.max(1, Math.round(dt * FS)), 0);   // noise only
+  }
+  updateRings(dt);
+
+  fftTick += dt;
+  if (fftTick > 0.09){
+    fftTick = 0;
+    peakMax = Math.max(fft(), 8);
+    let bi = 1, bv = 0;
+    const lim = Math.floor(130 * NFFT / FS);
+    for (let i = 2; i < lim; i++) if (mag[i] > bv){ bv = mag[i]; bi = i; }
+    peakHz = bi * FS / NFFT;
+
+    estX = estimatePosition();
+    if (isFinite(estX)){
+      const e = Math.abs(estX - obj.x);
+      errEma = isFinite(errEma) ? errEma*0.75 + e*0.25 : e;
+    }
+
+    const snr = sigRms / Math.max(1e-6, noiseRms);
+    const verdict = classify(peakHz, snr);
+    updateReadout(verdict, peakHz, dist, bestI, snr);
+
+    if (verdict.state === 'ok'){
+      settleFrames++;
+      const sig = verdict.label + '|' + Math.round(dist/25);
+      if (settleFrames > 4 && sig !== lastLogged){
+        lastLogged = sig;
+        pushLog(verdict.label, verdict.conf, dist, bestI);
+      }
+    } else {
+      settleFrames = 0;
+    }
+
+    drawTrace();
+    drawSpec(peakMax, peakHz);
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+/* =======================================================================
+   10. BOOT
+   ======================================================================= */
+rebuildWorld();
+buildSource();
+resetTrack();
+resize();
+applyCam();
+window.addEventListener('resize', () => {
+  resize(); drawTrace(); drawSpec(peakMax, peakHz); drawChans();
+});
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
